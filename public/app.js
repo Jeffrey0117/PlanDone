@@ -14,7 +14,7 @@
     { id: 'read', name: '閱讀', emoji: '📚' }
   ]
 
-  let state = { months: {}, days: {}, meta: {} }
+  let state = { months: {}, days: {}, weeks: {}, meta: {} }
 
   /* ---- 工具 ---- */
   const pad = (n) => String(n).padStart(2, '0')
@@ -359,34 +359,33 @@
     return wrap
   }
 
-  /* ---- 月頁:計畫(檢視=勾選清單 / 編輯=textarea) ---- */
-  const renderPlanSection = (container, ym) => {
+  /* ---- 勾選清單元件(月計畫 / 週目標共用) ---- */
+  const renderChecklist = (container, opts) => {
     container.innerHTML = ''
-    const plan = (state.months[ym] && state.months[ym].plan) || ''
+    const text = opts.get()
 
     const startEdit = () => {
       container.innerHTML = ''
       const area = document.createElement('textarea')
       area.className = 'plan-area'
-      area.placeholder = '這個月想完成的事…\n用「- 事項」寫的行會變成可勾選的清單'
-      area.value = (state.months[ym] && state.months[ym].plan) || ''
+      area.placeholder = opts.placeholder
+      area.value = opts.get()
       area.addEventListener('blur', () => {
         const val = area.value
-        const prev = (state.months[ym] && state.months[ym].plan) || ''
-        if (val !== prev) {
-          saveMonth(ym, { plan: val }).then(() => renderPlanSection(container, ym))
+        if (val !== opts.get()) {
+          opts.save(val).then(() => renderChecklist(container, opts))
         } else {
-          renderPlanSection(container, ym)
+          renderChecklist(container, opts)
         }
       })
       container.append(area)
       area.focus()
     }
 
-    if (!plan.trim()) {
+    if (!text.trim()) {
       const empty = document.createElement('button')
       empty.className = 'plan-empty'
-      empty.textContent = '還沒寫計畫 — 點這裡開始(用「- 事項」寫會變成勾選清單)'
+      empty.textContent = opts.emptyText
       empty.addEventListener('click', startEdit)
       container.append(empty)
       return
@@ -394,7 +393,7 @@
 
     const box = document.createElement('div')
     box.className = 'plan-view'
-    const items = parsePlan(plan)
+    const items = parsePlan(text)
 
     items.forEach((it, idx) => {
       if (it.type === 'task') {
@@ -406,11 +405,11 @@
         cb.addEventListener('change', () => {
           const next = items.map((x, i) => (i === idx ? { ...x, done: cb.checked } : x))
           row.classList.toggle('is-done', cb.checked)
-          saveMonth(ym, { plan: serializePlan(next) }).then(() => renderPlanSection(container, ym))
+          opts.save(serializePlan(next)).then(() => renderChecklist(container, opts))
         })
-        const text = document.createElement('span')
-        text.textContent = it.text
-        row.append(cb, text)
+        const text2 = document.createElement('span')
+        text2.textContent = it.text
+        row.append(cb, text2)
         box.append(row)
       } else if (it.raw.trim()) {
         const p = document.createElement('p')
@@ -427,6 +426,13 @@
     box.append(edit)
     container.append(box)
   }
+
+  const renderPlanSection = (container, ym) => renderChecklist(container, {
+    get: () => (state.months[ym] && state.months[ym].plan) || '',
+    save: (val) => saveMonth(ym, { plan: val }),
+    placeholder: '這個月想完成的事…\n用「- 事項」寫的行會變成可勾選的清單',
+    emptyText: '還沒寫計畫 — 點這裡開始(用「- 事項」寫會變成勾選清單)'
+  })
 
   /* ---- 月頁:打卡卡片 ---- */
   const monthCards = (ym) => (state.months[ym] && state.months[ym].cards) || {}
@@ -774,6 +780,35 @@
     next.href = `#/week/${shiftDate(monday, 7)}`
     nav.append(prev, title, next)
     view.append(nav)
+
+    const goalLabel = document.createElement('p')
+    goalLabel.className = 'plan-label'
+    goalLabel.textContent = '週目標'
+    const goalStats = taskStats((state.weeks[monday] && state.weeks[monday].goals) || '')
+    const goalEn = document.createElement('span')
+    goalEn.textContent = goalStats.total > 0
+      ? `${goalStats.done}/${goalStats.total} DONE`
+      : 'SMALL WINS, EVERY WEEK'
+    goalLabel.append(goalEn)
+    view.append(goalLabel)
+
+    const goalBox = document.createElement('div')
+    goalBox.className = 'plan-box'
+    renderChecklist(goalBox, {
+      get: () => (state.weeks[monday] && state.weeks[monday].goals) || '',
+      save: async (val) => {
+        state = {
+          ...state,
+          weeks: { ...state.weeks, [monday]: { ...(state.weeks[monday] || {}), goals: val } }
+        }
+        await api(`/api/week/${monday}`, { method: 'PUT', body: JSON.stringify({ goals: val }) })
+        flashSaved()
+        render()
+      },
+      placeholder: '這週要拿下的幾件事…\n用「- 事項」寫的行會變成可勾選的清單',
+      emptyText: '這週還沒設目標 — 點這裡寫(建議從月計畫挑 2~3 件下來)'
+    })
+    view.append(goalBox)
 
     const list = document.createElement('div')
     list.className = 'week-list'

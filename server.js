@@ -45,6 +45,7 @@ const dayBodySchema = z.object({
   note: z.string().max(2000).optional(),
   stamps: z.array(z.string().max(24)).max(12).optional()
 }).refine(notEmpty, { message: '至少要有一個欄位' })
+const weekBodySchema = z.object({ goals: z.string().max(10000) })
 const metaBodySchema = z.object({
   theme: z.string().min(1).max(4).optional(),
   settings: z.object({
@@ -95,6 +96,28 @@ app.put('/api/month/:ym', (req, res) => {
     return res.status(400).json({ success: false, error: '內容格式錯誤' })
   }
   const saved = store.setMonth(ym.data, body.data)
+  res.json({ success: true, data: saved })
+})
+
+app.put('/api/week/:monday', (req, res) => {
+  const monday = dateSchema.safeParse(req.params.monday)
+  const validMonday = monday.success && isValidDate(monday.data)
+  if (validMonday) {
+    const [y, m, d] = monday.data.split('-').map(Number)
+    const isMon = new Date(y, m - 1, d).getDay() === 1
+    const sundayYm = new Date(y, m - 1, d + 6)
+    const sundayKey = `${sundayYm.getFullYear()}-${String(sundayYm.getMonth() + 1).padStart(2, '0')}`
+    if (!isMon || (!ymInRange(monday.data.slice(0, 7)) && !ymInRange(sundayKey))) {
+      return res.status(400).json({ success: false, error: '週一日期錯誤或超出範圍' })
+    }
+  } else {
+    return res.status(400).json({ success: false, error: '日期格式錯誤' })
+  }
+  const body = weekBodySchema.safeParse(req.body)
+  if (!body.success) {
+    return res.status(400).json({ success: false, error: '內容格式錯誤' })
+  }
+  const saved = store.setWeek(monday.data, body.data)
   res.json({ success: true, data: saved })
 })
 
