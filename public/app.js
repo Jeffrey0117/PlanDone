@@ -429,20 +429,193 @@
     container.append(box)
   }
 
-  /* ---- 月頁:印章統計 ---- */
-  const renderStampTally = (ym) => {
-    const row = document.createElement('div')
-    row.className = 'stamp-tally'
-    stampDefs().forEach((def) => {
-      const count = Object.keys(state.days)
-        .filter((d) => d.startsWith(ym) && (dayData(d).stamps || []).includes(def.id)).length
-      const chip = document.createElement('span')
-      chip.className = 'chip' + (count > 0 ? ' chip-on' : '')
-      chip.textContent = `${def.emoji} ${count}`
-      chip.title = `${def.name}章:本月 ${count} 天`
-      row.append(chip)
+  /* ---- 月頁:打卡卡片 ---- */
+  const monthCards = (ym) => (state.months[ym] && state.months[ym].cards) || {}
+  const isStamped = (ym, day, defId) => ((dayData(`${ym}-${pad(day)}`).stamps) || []).includes(defId)
+
+  const toggleStamp = (ym, day, defId) => {
+    const date = `${ym}-${pad(day)}`
+    const current = dayData(date).stamps || []
+    const next = current.includes(defId)
+      ? current.filter((id) => id !== defId)
+      : [...current, defId]
+    return saveDay(date, { stamps: next })
+  }
+
+  const daysInYm = (ym) => {
+    const [y, m] = ym.split('-').map(Number)
+    return new Date(y, m, 0).getDate()
+  }
+
+  const weekdayOf = (ym, day) => {
+    const [y, m] = ym.split('-').map(Number)
+    return new Date(y, m - 1, day).getDay()
+  }
+
+  const renderCardEditor = (box, ym, def, existing) => {
+    box.innerHTML = ''
+    box.className = 'punch-card is-editing'
+    const total = daysInYm(ym)
+    let picked = new Set(existing || [])
+
+    const head = document.createElement('div')
+    head.className = 'pc-head'
+    const title = document.createElement('strong')
+    title.textContent = `${def.emoji} ${def.name}卡 — 圈選要${def.name}的日子`
+    head.append(title)
+    box.append(head)
+
+    const quick = document.createElement('div')
+    quick.className = 'pc-quick'
+    const quickDefs = [
+      { label: '每天', test: () => true },
+      { label: '一三五', test: (wd) => [1, 3, 5].includes(wd) },
+      { label: '二四', test: (wd) => [2, 4].includes(wd) },
+      { label: '週末', test: (wd) => [0, 6].includes(wd) },
+      { label: '清空', test: null }
+    ]
+    const dayBtns = []
+    const syncBtns = () => dayBtns.forEach((b) =>
+      b.classList.toggle('is-picked', picked.has(Number(b.dataset.day))))
+    quickDefs.forEach((q) => {
+      const btn = document.createElement('button')
+      btn.type = 'button'
+      btn.textContent = q.label
+      btn.addEventListener('click', () => {
+        picked = new Set(q.test
+          ? Array.from({ length: total }, (_, i) => i + 1).filter((d) => q.test(weekdayOf(ym, d)))
+          : [])
+        syncBtns()
+      })
+      quick.append(btn)
     })
-    return row
+    box.append(quick)
+
+    const grid = document.createElement('div')
+    grid.className = 'pc-pick-grid'
+    Array.from({ length: total }, (_, i) => i + 1).forEach((day) => {
+      const btn = document.createElement('button')
+      btn.type = 'button'
+      btn.dataset.day = day
+      btn.textContent = day
+      btn.className = picked.has(day) ? 'is-picked' : ''
+      btn.addEventListener('click', () => {
+        if (picked.has(day)) picked.delete(day)
+        else picked.add(day)
+        syncBtns()
+      })
+      dayBtns.push(btn)
+      grid.append(btn)
+    })
+    box.append(grid)
+
+    const actions = document.createElement('div')
+    actions.className = 'pc-actions'
+    const saveBtn = document.createElement('button')
+    saveBtn.type = 'button'
+    saveBtn.className = 'pc-save'
+    saveBtn.textContent = '存卡'
+    saveBtn.addEventListener('click', () => {
+      const days = [...picked].sort((a, b) => a - b)
+      const cards = { ...monthCards(ym) }
+      if (days.length > 0) cards[def.id] = days
+      else delete cards[def.id]
+      saveMonth(ym, { cards }).then(() => refreshCards(ym))
+    })
+    const cancelBtn = document.createElement('button')
+    cancelBtn.type = 'button'
+    cancelBtn.textContent = '取消'
+    cancelBtn.addEventListener('click', () => refreshCards(ym))
+    actions.append(saveBtn, cancelBtn)
+    box.append(actions)
+  }
+
+  const renderPunchCard = (ym, def, targetDays) => {
+    const box = document.createElement('div')
+    box.className = 'punch-card'
+    const stamped = targetDays.filter((d) => isStamped(ym, d, def.id))
+    const isFull = stamped.length === targetDays.length && targetDays.length > 0
+    if (isFull) box.classList.add('is-full')
+
+    const head = document.createElement('div')
+    head.className = 'pc-head'
+    const title = document.createElement('strong')
+    title.textContent = `${def.emoji} ${def.name}卡`
+    const count = document.createElement('span')
+    count.className = 'pc-count'
+    count.textContent = `${stamped.length}/${targetDays.length}`
+    const edit = document.createElement('button')
+    edit.type = 'button'
+    edit.className = 'pc-edit'
+    edit.textContent = '✎'
+    edit.title = '改日子 / 全部取消圈選可刪卡'
+    edit.addEventListener('click', () => renderCardEditor(box, ym, def, targetDays))
+    head.append(title, count, edit)
+    box.append(head)
+
+    const slots = document.createElement('div')
+    slots.className = 'pc-slots'
+    targetDays.forEach((day) => {
+      const slot = document.createElement('button')
+      slot.type = 'button'
+      slot.className = 'pc-slot'
+      slot.title = `${Number(ym.split('-')[1])}/${day}`
+      const num = document.createElement('i')
+      num.textContent = day
+      slot.append(num)
+      if (isStamped(ym, day, def.id)) {
+        slot.classList.add('is-stamped')
+        const mark = document.createElement('em')
+        mark.textContent = def.emoji
+        mark.style.transform = `rotate(${((day * 7) % 21) - 10}deg)`
+        slot.append(mark)
+      }
+      slot.addEventListener('click', () => {
+        toggleStamp(ym, day, def.id).then(() => {
+          refreshCards(ym)
+          const monthView = document.getElementById('view')
+          refreshDayCell(monthView, `${ym}-${pad(day)}`)
+        })
+      })
+      slots.append(slot)
+    })
+    box.append(slots)
+
+    if (isFull) {
+      const badge = document.createElement('span')
+      badge.className = 'pc-full-badge'
+      badge.textContent = 'FULL!'
+      box.append(badge)
+    }
+    return box
+  }
+
+  const renderCardsInto = (wrap, ym) => {
+    wrap.innerHTML = ''
+    const cards = monthCards(ym)
+    stampDefs().forEach((def) => {
+      const targetDays = cards[def.id]
+      if (targetDays && targetDays.length > 0) {
+        wrap.append(renderPunchCard(ym, def, targetDays))
+      } else {
+        const ghost = document.createElement('button')
+        ghost.type = 'button'
+        ghost.className = 'pc-ghost'
+        ghost.textContent = `+ ${def.emoji} ${def.name}卡`
+        ghost.title = `發一張${def.name}卡,圈好這個月要${def.name}的日子`
+        ghost.addEventListener('click', () => {
+          const box = document.createElement('div')
+          ghost.replaceWith(box)
+          renderCardEditor(box, ym, def, [])
+        })
+        wrap.append(ghost)
+      }
+    })
+  }
+
+  const refreshCards = (ym) => {
+    const wrap = document.getElementById('cardsBox')
+    if (wrap) renderCardsInto(wrap, ym)
   }
 
   /* ---- 月頁:日曆 ---- */
@@ -520,7 +693,10 @@
             ? current.filter((id) => id !== def.id)
             : [...current, def.id]
           btn.classList.toggle('is-on', next.includes(def.id))
-          saveDay(date, { stamps: next }).then(() => refreshDayCell(container, date))
+          saveDay(date, { stamps: next }).then(() => {
+            refreshDayCell(container, date)
+            refreshCards(date.slice(0, 7))
+          })
         })
         stampRow.append(btn)
       })
@@ -578,7 +754,13 @@
     renderPlanSection(planBox, ym)
     view.append(planBox)
 
-    if (settings().stamps) view.append(renderStampTally(ym))
+    if (settings().stamps) {
+      const cardsBox = document.createElement('div')
+      cardsBox.className = 'cards-box'
+      cardsBox.id = 'cardsBox'
+      renderCardsInto(cardsBox, ym)
+      view.append(cardsBox)
+    }
 
     const head = document.createElement('div')
     head.className = 'cal-head'

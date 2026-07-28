@@ -34,7 +34,11 @@ const notEmpty = (o) => Object.values(o).some((v) => v !== undefined)
 const monthBodySchema = z.object({
   plan: z.string().max(20000).optional(),
   done: z.boolean().optional(),
-  label: z.string().max(12).optional()
+  label: z.string().max(12).optional(),
+  cards: z.record(
+    z.string().max(24),
+    z.array(z.number().int().min(1).max(31)).max(31)
+  ).optional()
 }).refine(notEmpty, { message: '至少要有一個欄位' })
 const dayBodySchema = z.object({
   note: z.string().max(2000).optional(),
