@@ -762,6 +762,7 @@
       view.append(cardsBox)
     }
 
+    const calWrap = document.createElement('div')
     const head = document.createElement('div')
     head.className = 'cal-head'
     WEEKDAYS.forEach((w) => {
@@ -769,7 +770,7 @@
       s.textContent = w
       head.append(s)
     })
-    view.append(head)
+    calWrap.append(head)
 
     const grid = document.createElement('div')
     grid.className = 'cal-grid'
@@ -792,10 +793,67 @@
       selectedDate = cell.dataset.date
       grid.querySelectorAll('.day-cell.is-selected').forEach((c) => c.classList.remove('is-selected'))
       cell.classList.add('is-selected')
-      renderDayEditor(view, selectedDate)
+      renderDayEditor(calWrap, selectedDate)
     })
 
-    view.append(grid)
+    calWrap.append(grid)
+    view.append(calWrap)
+    renderReview(view, ym)
+  }
+
+  /* ---- 月回顧 ---- */
+  const renderReview = (view, ym) => {
+    const wrap = document.createElement('div')
+    wrap.className = 'review-box'
+
+    const label = document.createElement('p')
+    label.className = 'plan-label'
+    label.textContent = '月回顧'
+    const labelEn = document.createElement('span')
+    labelEn.textContent = 'REVIEW — FACTS FIRST, FEELINGS SECOND'
+    label.append(labelEn)
+    wrap.append(label)
+
+    const stats = document.createElement('div')
+    stats.className = 'review-stats'
+    const month = state.months[ym] || {}
+    const ts = taskStats(month.plan)
+    if (ts.total > 0) {
+      const chip = document.createElement('span')
+      chip.className = 'chip' + (ts.done === ts.total ? ' chip-on' : '')
+      chip.textContent = `☑ 計畫 ${ts.done}/${ts.total}`
+      stats.append(chip)
+    }
+    Object.entries(monthCards(ym)).forEach(([defId, days]) => {
+      const def = stampDefs().find((d) => d.id === defId)
+      if (!def) return
+      const stamped = days.filter((d) => isStamped(ym, d, defId)).length
+      const chip = document.createElement('span')
+      chip.className = 'chip' + (stamped === days.length ? ' chip-on' : '')
+      chip.textContent = `${def.emoji} ${def.name} ${stamped}/${days.length}`
+      stats.append(chip)
+    })
+    const diaryDays = Object.keys(state.days).filter((d) => d.startsWith(ym) && hasEntry(d)).length
+    const diaryChip = document.createElement('span')
+    diaryChip.className = 'chip'
+    diaryChip.textContent = `✎ 日記 ${diaryDays} 天`
+    stats.append(diaryChip)
+    wrap.append(stats)
+
+    const area = document.createElement('textarea')
+    area.className = 'review-area'
+    area.placeholder = '1. 做成了什麼?(看上面數字說話)\n2. 卡在哪?為什麼?\n3. 下個月要改哪一件事?'
+    area.value = month.review || ''
+    const commit = () => {
+      const val = area.value
+      const prev = (state.months[ym] && state.months[ym].review) || ''
+      if (val !== prev) saveMonth(ym, { review: val })
+    }
+    area.addEventListener('input', debounce(commit, 1500))
+    area.addEventListener('blur', commit)
+    wrap.append(area)
+
+    view.append(wrap)
   }
 
   /* ---- 設定面板 ---- */

@@ -747,6 +747,22 @@ button, input, textarea { font-family: inherit; }
 }
 .day-editor textarea:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
 
+/* ====== 月回顧 ====== */
+.review-box { margin-top: 1.6rem; }
+.review-stats { display: flex; gap: .4rem; flex-wrap: wrap; margin: .5rem 0 .6rem; }
+.review-area {
+  width: 100%;
+  min-height: 96px;
+  resize: vertical;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  background: #fff;
+  padding: .6rem .9rem;
+  font-size: .92rem;
+  line-height: 1.7;
+}
+.review-area:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+
 /* ====== 儲存提示 ====== */
 .savebar {
   position: fixed;

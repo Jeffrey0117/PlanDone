@@ -35,6 +35,7 @@ const monthBodySchema = z.object({
   plan: z.string().max(20000).optional(),
   done: z.boolean().optional(),
   label: z.string().max(12).optional(),
+  review: z.string().max(10000).optional(),
   cards: z.record(
     z.string().max(24),
     z.array(z.number().int().min(1).max(31)).max(31)
