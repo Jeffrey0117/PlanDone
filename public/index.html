@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PlanDone|一年計畫日記</title>
+  <meta name="description" content="PlanDone — 2026-07 到 2027-06 的年曆規劃本">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="lock" id="lockOverlay" hidden>
+    <form class="lock-box" id="lockForm">
+      <h1>PlanDone</h1>
+      <p>輸入通行碼開啟你的規劃本</p>
+      <input type="password" id="lockInput" placeholder="通行碼" autocomplete="current-password" required>
+      <button type="submit">開啟</button>
+      <p class="lock-error" id="lockError" hidden>通行碼錯誤,再試一次</p>
+    </form>
+  </div>
+
+  <header class="topbar">
+    <a class="logo" href="#/">✓ PlanDone</a>
+    <span class="topbar-range">2026.07 — 2027.06</span>
+  </header>
+
+  <main id="view" class="view"></main>
+
+  <p class="savebar" id="saveBar" hidden>已儲存 ✓</p>
+
+  <script src="app.js"></script>
+</body>
+</html>

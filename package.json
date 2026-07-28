@@ -1,0 +1,14 @@
+{
+  "name": "plandone",
+  "version": "1.0.0",
+  "description": "一年計畫日記 — 年曆規劃本 (2026-07 ~ 2027-06)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "zod": "^3.23.8"
+  }
+}
