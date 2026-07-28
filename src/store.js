@@ -2,7 +2,7 @@ const { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync } = requi
 const { join, dirname } = require('node:path')
 
 const DATA_FILE = join(process.cwd(), 'data', 'plandone.json')
-const EMPTY = { months: {}, days: {} }
+const EMPTY = { months: {}, days: {}, meta: {} }
 
 function load() {
   if (!existsSync(DATA_FILE)) return { ...EMPTY }
@@ -10,7 +10,8 @@ function load() {
     const parsed = JSON.parse(readFileSync(DATA_FILE, 'utf8'))
     return {
       months: parsed.months || {},
-      days: parsed.days || {}
+      days: parsed.days || {},
+      meta: parsed.meta || {}
     }
   } catch (error) {
     console.error('讀取資料檔失敗,以空資料啟動:', error.message)
@@ -30,11 +31,11 @@ function getAll() {
   return load()
 }
 
-function setMonthPlan(ym, plan) {
+function setMonth(ym, patch) {
   const data = load()
   const next = {
     ...data,
-    months: { ...data.months, [ym]: { plan } }
+    months: { ...data.months, [ym]: { ...(data.months[ym] || {}), ...patch } }
   }
   save(next)
   return next.months[ym]
@@ -50,4 +51,11 @@ function setDayNote(date, note) {
   return next.days[date]
 }
 
-module.exports = { getAll, setMonthPlan, setDayNote }
+function setMeta(patch) {
+  const data = load()
+  const next = { ...data, meta: { ...data.meta, ...patch } }
+  save(next)
+  return next.meta
+}
+
+module.exports = { getAll, setMonth, setDayNote, setMeta }

@@ -5,8 +5,17 @@
   const CODE_KEY = 'plandone-code'
   const MONTH_COUNT = 12
   const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日']
+  const WAFU = {
+    1: '睦月', 2: '如月', 3: '彌生', 4: '卯月', 5: '皐月', 6: '水無月',
+    7: '文月', 8: '葉月', 9: '長月', 10: '神無月', 11: '霜月', 12: '師走'
+  }
+  const EN_MONTHS = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
+    'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER']
+  const YEAR_FIRST_DAY = new Date(2026, 6, 1)
+  const YEAR_TOTAL_DAYS = 365
+  const DEFAULT_THEME = '始'
 
-  let state = { months: {}, days: {} }
+  let state = { months: {}, days: {}, meta: {} }
   let selectedDate = null
 
   /* ---- 工具 ---- */
@@ -64,9 +73,12 @@
     flashSaved.timer = setTimeout(() => { bar.hidden = true }, 1200)
   }
 
-  const saveMonth = async (ym, plan) => {
-    state = { ...state, months: { ...state.months, [ym]: { plan } } }
-    await api(`/api/month/${ym}`, { method: 'PUT', body: JSON.stringify({ plan }) })
+  const saveMonth = async (ym, patch) => {
+    state = {
+      ...state,
+      months: { ...state.months, [ym]: { ...(state.months[ym] || {}), ...patch } }
+    }
+    await api(`/api/month/${ym}`, { method: 'PUT', body: JSON.stringify(patch) })
     flashSaved()
   }
 
@@ -74,6 +86,28 @@
     state = { ...state, days: { ...state.days, [date]: { note } } }
     await api(`/api/day/${date}`, { method: 'PUT', body: JSON.stringify({ note }) })
     flashSaved()
+  }
+
+  const saveMeta = async (patch) => {
+    state = { ...state, meta: { ...(state.meta || {}), ...patch } }
+    await api('/api/meta', { method: 'PUT', body: JSON.stringify(patch) })
+    flashSaved()
+  }
+
+  /* ---- 年進度條 ---- */
+  const initProgress = () => {
+    const now = new Date()
+    const dayIndex = Math.min(
+      Math.max(Math.floor((now - YEAR_FIRST_DAY) / 86400000) + 1, 1),
+      YEAR_TOTAL_DAYS
+    )
+    const percent = Math.round((dayIndex / YEAR_TOTAL_DAYS) * 1000) / 10
+    document.getElementById('ypFill').style.width = `${percent}%`
+    const caption = document.getElementById('ypCaption')
+    caption.innerHTML = ''
+    const dayText = document.createElement('em')
+    dayText.textContent = `DAY ${dayIndex} / ${YEAR_TOTAL_DAYS}`
+    caption.append(dayText, ` ・ ${percent}% ・ 一歩ずつ`)
   }
 
   /* ---- 通行碼鎖 ---- */
@@ -99,8 +133,47 @@
     })
   }
 
+  /* ---- 年度一字 ---- */
+  const renderThemeHero = (view) => {
+    const hero = document.createElement('div')
+    hero.className = 'theme-hero'
+
+    const word = document.createElement('button')
+    word.className = 'theme-word'
+    word.title = '點擊修改年度一字'
+    word.textContent = (state.meta && state.meta.theme) || DEFAULT_THEME
+
+    word.addEventListener('click', () => {
+      const input = document.createElement('input')
+      input.className = 'theme-input'
+      input.maxLength = 4
+      input.value = word.textContent
+      const commit = () => {
+        const val = input.value.trim()
+        if (val && val !== word.textContent) {
+          saveMeta({ theme: val }).then(() => { word.textContent = val })
+          word.textContent = val
+        }
+        input.replaceWith(word)
+      }
+      input.addEventListener('blur', commit)
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur() })
+      word.replaceWith(input)
+      input.focus()
+      input.select()
+    })
+
+    const caption = document.createElement('p')
+    caption.className = 'theme-caption'
+    caption.textContent = 'ONE YEAR. ONE WORD. — JULY 2026 TO JUNE 2027'
+
+    hero.append(word, caption)
+    view.append(hero)
+  }
+
   /* ---- 年視圖 ---- */
   const renderYear = (view) => {
+    renderThemeHero(view)
     const grid = document.createElement('div')
     grid.className = 'year-grid'
     const currentYm = todayStr().slice(0, 7)
@@ -118,6 +191,20 @@
       year.textContent = ym === currentYm ? '本月' : ''
       head.append(title, year)
 
+      const monthNum = Number(ym.split('-')[1])
+      const wafu = document.createElement('div')
+      wafu.className = 'month-card-wafu'
+      const wafuName = document.createElement('b')
+      wafuName.textContent = WAFU[monthNum]
+      wafu.append(wafuName, ` ・ ${EN_MONTHS[monthNum - 1]}`)
+
+      if (state.months[ym] && state.months[ym].done) {
+        const stamp = document.createElement('span')
+        stamp.className = 'card-stamp'
+        stamp.textContent = '済'
+        card.append(stamp)
+      }
+
       const preview = document.createElement('p')
       const plan = (state.months[ym] && state.months[ym].plan || '').trim()
       preview.className = 'month-card-preview' + (plan ? '' : ' is-empty')
@@ -129,7 +216,7 @@
       days.className = 'month-card-days'
       days.textContent = dayCount > 0 ? `日記 ${dayCount} 天` : ''
 
-      card.append(head, preview, days)
+      card.append(head, wafu, preview, days)
       grid.append(card)
     })
     view.append(grid)
@@ -148,6 +235,10 @@
 
     const title = document.createElement('h2')
     title.textContent = ymLabel(ym)
+    const monthNum = Number(ym.split('-')[1])
+    const sub = document.createElement('small')
+    sub.textContent = `${WAFU[monthNum]} ・ ${EN_MONTHS[monthNum - 1]}`
+    title.append(sub)
 
     const next = document.createElement('a')
     next.textContent = '下個月 →'
@@ -220,9 +311,28 @@
   const renderMonth = (view, ym) => {
     view.append(renderMonthNav(ym))
 
+    const headRow = document.createElement('div')
+    headRow.className = 'month-head-row'
     const label = document.createElement('p')
     label.className = 'plan-label'
     label.textContent = '本月計畫'
+    const labelEn = document.createElement('span')
+    labelEn.textContent = 'PLAN THE MONTH, LIVE THE DAYS'
+    label.append(labelEn)
+
+    const stamp = document.createElement('button')
+    stamp.className = 'stamp-btn' + (state.months[ym] && state.months[ym].done ? ' is-done' : '')
+    stamp.textContent = '済'
+    stamp.title = '這個月的計畫完成了就蓋章'
+    stamp.addEventListener('click', () => {
+      const next = !(state.months[ym] && state.months[ym].done)
+      stamp.classList.toggle('is-done', next)
+      saveMonth(ym, { done: next })
+    })
+
+    headRow.append(label, stamp)
+    view.append(headRow)
+
     const area = document.createElement('textarea')
     area.className = 'plan-area'
     area.placeholder = '這個月想完成的事…'
@@ -230,11 +340,11 @@
     const commitPlan = () => {
       const val = area.value
       const prev = (state.months[ym] && state.months[ym].plan) || ''
-      if (val !== prev) saveMonth(ym, val)
+      if (val !== prev) saveMonth(ym, { plan: val })
     }
     area.addEventListener('input', debounce(commitPlan, 1500))
     area.addEventListener('blur', commitPlan)
-    view.append(label, area)
+    view.append(area)
 
     const head = document.createElement('div')
     head.className = 'cal-head'
@@ -288,6 +398,7 @@
   /* ---- 啟動 ---- */
   const boot = async () => {
     initLock()
+    initProgress()
     window.addEventListener('hashchange', render)
     if (!localStorage.getItem(CODE_KEY)) {
       showLock(false)

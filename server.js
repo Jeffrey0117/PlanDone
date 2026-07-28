@@ -30,8 +30,12 @@ const RANGE_END = '2027-06'
 
 const ymSchema = z.string().regex(/^\d{4}-\d{2}$/)
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
-const monthBodySchema = z.object({ plan: z.string().max(20000) })
+const monthBodySchema = z.object({
+  plan: z.string().max(20000).optional(),
+  done: z.boolean().optional()
+}).refine((o) => o.plan !== undefined || o.done !== undefined, { message: '至少要有一個欄位' })
 const dayBodySchema = z.object({ note: z.string().max(2000) })
+const metaBodySchema = z.object({ theme: z.string().min(1).max(4) })
 
 function ymInRange(ym) {
   return ym >= RANGE_START && ym <= RANGE_END
@@ -67,7 +71,16 @@ app.put('/api/month/:ym', (req, res) => {
   if (!body.success) {
     return res.status(400).json({ success: false, error: '內容格式錯誤' })
   }
-  const saved = store.setMonthPlan(ym.data, body.data.plan)
+  const saved = store.setMonth(ym.data, body.data)
+  res.json({ success: true, data: saved })
+})
+
+app.put('/api/meta', (req, res) => {
+  const body = metaBodySchema.safeParse(req.body)
+  if (!body.success) {
+    return res.status(400).json({ success: false, error: '內容格式錯誤' })
+  }
+  const saved = store.setMeta(body.data)
   res.json({ success: true, data: saved })
 })
 
