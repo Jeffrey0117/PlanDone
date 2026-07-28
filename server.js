@@ -43,7 +43,8 @@ const monthBodySchema = z.object({
 }).refine(notEmpty, { message: '至少要有一個欄位' })
 const dayBodySchema = z.object({
   note: z.string().max(2000).optional(),
-  stamps: z.array(z.string().max(24)).max(12).optional()
+  stamps: z.array(z.string().max(24)).max(12).optional(),
+  vocab: z.string().max(4000).optional()
 }).refine(notEmpty, { message: '至少要有一個欄位' })
 const weekBodySchema = z.object({ goals: z.string().max(10000) })
 const metaBodySchema = z.object({

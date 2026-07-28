@@ -48,9 +48,10 @@
   const settings = () => ({ ...DEFAULT_SETTINGS, ...((state.meta && state.meta.settings) || {}) })
   const stampDefs = () => (state.meta && state.meta.stampDefs) || DEFAULT_STAMPS
   const dayData = (date) => state.days[date] || {}
+  const vocabCount = (date) => ((dayData(date).vocab || '').split('\n').filter((l) => l.trim()).length)
   const hasEntry = (date) => {
     const d = dayData(date)
-    return Boolean((d.note && d.note.trim()) || (d.stamps && d.stamps.length))
+    return Boolean((d.note && d.note.trim()) || (d.stamps && d.stamps.length) || vocabCount(date) > 0)
   }
 
   /* ---- API ---- */
@@ -648,6 +649,14 @@
         .map((d) => d.emoji).slice(0, 3).join('')
       top.append(icons)
     }
+    const vc = vocabCount(date)
+    if (vc > 0) {
+      const vb = document.createElement('span')
+      vb.className = 'day-vocab'
+      vb.textContent = `🔤${vc}`
+      vb.title = `這天記了 ${vc} 個單字`
+      top.append(vb)
+    }
     cell.append(top)
 
     const note = (data.note || '').trim()
@@ -735,6 +744,27 @@
     area.addEventListener('input', debounce(commit, 1500))
     area.addEventListener('blur', commit)
     box.append(area)
+
+    const vocabLabel = document.createElement('p')
+    vocabLabel.className = 'plan-label vocab-label'
+    vocabLabel.textContent = '🔤 今日單字卡'
+    const vocabEn = document.createElement('span')
+    vocabEn.textContent = 'ONE LINE, ONE WORD'
+    vocabLabel.append(vocabEn)
+    box.append(vocabLabel)
+
+    const vocabArea = document.createElement('textarea')
+    vocabArea.className = 'vocab-area'
+    vocabArea.placeholder = 'resilient = 有韌性的\nprocrastinate = 拖延'
+    vocabArea.value = dayData(date).vocab || ''
+    const commitVocab = () => {
+      const val = vocabArea.value
+      const prev = dayData(date).vocab || ''
+      if (val !== prev) saveDay(date, { vocab: val })
+    }
+    vocabArea.addEventListener('input', debounce(commitVocab, 1500))
+    vocabArea.addEventListener('blur', commitVocab)
+    box.append(vocabArea)
 
     const close = document.createElement('button')
     close.className = 'modal-close'
@@ -843,6 +873,14 @@
           mark.title = `${def.name}${has ? ':已蓋' : ':今日目標,還沒蓋'}`
           stampsEl.append(mark)
         })
+      }
+      const vc = vocabCount(date)
+      if (inRange && vc > 0) {
+        const vb = document.createElement('span')
+        vb.className = 'wr-vocab'
+        vb.textContent = `🔤${vc}`
+        vb.title = `記了 ${vc} 個單字`
+        stampsEl.append(vb)
       }
 
       const noteEl = document.createElement('div')
@@ -974,6 +1012,15 @@
     diaryChip.className = 'chip'
     diaryChip.textContent = `✎ 日記 ${diaryDays} 天`
     stats.append(diaryChip)
+    const vocabTotal = Object.keys(state.days)
+      .filter((d) => d.startsWith(ym))
+      .reduce((sum, d) => sum + vocabCount(d), 0)
+    if (vocabTotal > 0) {
+      const vChip = document.createElement('span')
+      vChip.className = 'chip chip-on'
+      vChip.textContent = `🔤 單字 ${vocabTotal} 個`
+      stats.append(vChip)
+    }
     wrap.append(stats)
 
     const area = document.createElement('textarea')
