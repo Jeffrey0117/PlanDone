@@ -52,7 +52,10 @@
     .map((l) => l.trim()).filter(Boolean)
     .map((line) => {
       const m = line.match(/^(.*?)\s*[=:：\-–]\s*(.*)$/)
-      return m ? { word: m[1], meaning: m[2] } : { word: line, meaning: '' }
+      if (m) return { word: m[1], meaning: m[2] }
+      const cjk = line.match(/^([A-Za-z][A-Za-z\s'’.-]*?)\s+([一-鿿].*)$/)
+      if (cjk) return { word: cjk[1], meaning: cjk[2] }
+      return { word: line, meaning: '' }
     })
   const serializeVocab = (entries) => entries
     .filter((e) => e.word.trim() || e.meaning.trim())
@@ -755,18 +758,13 @@
     area.addEventListener('blur', commit)
     box.append(area)
 
-    const vocabLabel = document.createElement('p')
-    vocabLabel.className = 'plan-label vocab-label'
-    vocabLabel.textContent = '🔤 今日單字卡'
-    const vocabEn = document.createElement('span')
-    vocabEn.textContent = 'ONE LINE, ONE WORD'
-    vocabLabel.append(vocabEn)
-    box.append(vocabLabel)
-
-    const vocabWrap = document.createElement('div')
-    vocabWrap.className = 'vocab-rows'
-    renderVocabEditor(vocabWrap, date)
-    box.append(vocabWrap)
+    const vocabLink = document.createElement('a')
+    vocabLink.className = 'vocab-link'
+    vocabLink.href = '#/vocab'
+    const vc2 = vocabCount(date)
+    vocabLink.textContent = vc2 > 0 ? `🔤 這天記了 ${vc2} 個單字 → 去單字本` : '🔤 記單字 → 去單字本'
+    vocabLink.addEventListener('click', () => { document.getElementById('dayModal').hidden = true })
+    box.append(vocabLink)
 
     const close = document.createElement('button')
     close.className = 'modal-close'
@@ -776,71 +774,6 @@
 
     document.getElementById('dayModal').hidden = false
     area.focus()
-  }
-
-  /* ---- 單字列編輯器(日彈窗用) ---- */
-  const renderVocabEditor = (wrap, date) => {
-    wrap.innerHTML = ''
-
-    const saveRows = () => {
-      const entries = [...wrap.querySelectorAll('.vocab-row')].map((r) => ({
-        word: r.querySelector('.v-word').value,
-        meaning: r.querySelector('.v-meaning').value
-      }))
-      const text = serializeVocab(entries)
-      if (text !== (dayData(date).vocab || '')) saveDay(date, { vocab: text })
-    }
-
-    const addRow = (entry) => {
-      const row = document.createElement('div')
-      row.className = 'vocab-row'
-      const word = document.createElement('input')
-      word.className = 'v-word'
-      word.placeholder = '單字'
-      word.value = entry.word
-      const meaning = document.createElement('input')
-      meaning.className = 'v-meaning'
-      meaning.placeholder = '意思'
-      meaning.value = entry.meaning
-      const del = document.createElement('button')
-      del.type = 'button'
-      del.className = 'v-del'
-      del.textContent = '×'
-      del.title = '刪除這個單字'
-      del.addEventListener('click', () => {
-        row.remove()
-        saveRows()
-        if (!wrap.querySelector('.vocab-row')) addRow({ word: '', meaning: '' })
-      })
-      ;[word, meaning].forEach((input) => {
-        input.addEventListener('blur', saveRows)
-        input.addEventListener('input', () => {
-          const rows = wrap.querySelectorAll('.vocab-row')
-          const last = rows[rows.length - 1]
-          if (last === row && (word.value.trim() || meaning.value.trim())) {
-            addRow({ word: '', meaning: '' })
-          }
-        })
-        input.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault()
-            if (input === word) meaning.focus()
-            else {
-              saveRows()
-              const rows = wrap.querySelectorAll('.vocab-row .v-word')
-              const next = rows[[...rows].indexOf(word) + 1]
-              if (next) next.focus()
-            }
-          }
-        })
-      })
-      row.append(word, meaning, del)
-      wrap.append(row)
-    }
-
-    const entries = parseVocab(dayData(date).vocab)
-    entries.forEach(addRow)
-    addRow({ word: '', meaning: '' })
   }
 
   /* ---- 單字本 ---- */
@@ -920,13 +853,46 @@
         shown.forEach((entry) => {
           const row = document.createElement('div')
           row.className = 'vb-row'
+
+          const startEdit = () => {
+            if (row.classList.contains('is-editing')) return
+            row.classList.add('is-editing')
+            row.innerHTML = ''
+            const wIn = document.createElement('input')
+            wIn.className = 'v-word'
+            wIn.value = entry.word
+            const mIn = document.createElement('input')
+            mIn.className = 'v-meaning'
+            mIn.placeholder = '意思'
+            mIn.value = entry.meaning
+            const commit = () => {
+              const all = parseVocab(dayData(date).vocab)
+              const next = all.map((x, i) =>
+                i === entry.idx ? { word: wIn.value, meaning: mIn.value } : x)
+              saveDay(date, { vocab: serializeVocab(next) }).then(renderList)
+            }
+            ;[wIn, mIn].forEach((input) => {
+              input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur() })
+            })
+            let blurTimer = null
+            ;[wIn, mIn].forEach((input) => {
+              input.addEventListener('blur', () => {
+                blurTimer = setTimeout(commit, 120)
+              })
+              input.addEventListener('focus', () => clearTimeout(blurTimer))
+            })
+            row.append(wIn, mIn)
+            wIn.focus()
+          }
+
           const word = document.createElement('b')
           word.textContent = entry.word
           const meaning = document.createElement('span')
           meaning.className = 'vb-meaning' + (vocabHideMeanings ? ' is-hidden' : '')
-          meaning.textContent = entry.meaning
+          meaning.textContent = entry.meaning || '(點擊補意思)'
+          if (!entry.meaning) meaning.classList.add('is-blank')
           meaning.addEventListener('click', (e) => {
-            if (vocabHideMeanings) {
+            if (vocabHideMeanings && !meaning.classList.contains('is-blank')) {
               e.stopPropagation()
               meaning.classList.toggle('is-hidden')
             }
@@ -941,7 +907,11 @@
             saveDay(date, { vocab: serializeVocab(next) }).then(render)
           })
           row.append(word, meaning, del)
-          row.addEventListener('click', () => openDayModal(date))
+          row.addEventListener('click', (e) => {
+            if (e.target === del) return
+            if (vocabHideMeanings && e.target === meaning) return
+            startEdit()
+          })
           group.append(row)
         })
         listWrap.append(group)
