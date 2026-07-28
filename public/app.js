@@ -15,7 +15,6 @@
   ]
 
   let state = { months: {}, days: {}, meta: {} }
-  let selectedDate = null
 
   /* ---- 工具 ---- */
   const pad = (n) => String(n).padStart(2, '0')
@@ -626,7 +625,6 @@
     cell.className = 'day-cell'
     cell.dataset.date = date
     if (date === todayStr()) cell.classList.add('is-today')
-    if (date === selectedDate) cell.classList.add('is-selected')
 
     const top = document.createElement('div')
     top.className = 'day-top'
@@ -665,38 +663,54 @@
     old.replaceWith(fresh)
   }
 
-  /* ---- 月頁:日記編輯器 ---- */
-  const renderDayEditor = (container, date) => {
-    const existing = container.querySelector('.day-editor')
-    if (existing) existing.remove()
-    if (!date) return
+  /* ---- 日編輯彈窗 ---- */
+  const WEEKDAY_NAMES = ['週日', '週一', '週二', '週三', '週四', '週五', '週六']
+  const dateInRange = (date) => monthList.includes(date.slice(0, 7))
 
-    const box = document.createElement('div')
-    box.className = 'day-editor'
-    const [, m, d] = date.split('-')
-    const heading = document.createElement('h3')
-    heading.textContent = `${Number(m)} 月 ${Number(d)} 日`
+  const closeDayModal = () => {
+    document.getElementById('dayModal').hidden = true
+    render()
+  }
+
+  const openDayModal = (date) => {
+    if (!dateInRange(date)) return
+    const box = document.getElementById('dayModalBox')
+    box.innerHTML = ''
+    const [y, m, d] = date.split('-').map(Number)
+    const wd = WEEKDAY_NAMES[new Date(y, m - 1, d).getDay()]
+
+    const heading = document.createElement('h2')
+    heading.textContent = `${m} 月 ${d} 日 ${wd}`
+    if (date === todayStr()) {
+      const tag = document.createElement('span')
+      tag.className = 'chip chip-streak'
+      tag.textContent = '今天'
+      tag.style.marginLeft = '.5em'
+      heading.append(tag)
+    }
     box.append(heading)
 
     if (settings().stamps) {
       const stampRow = document.createElement('div')
       stampRow.className = 'day-stamp-row'
+      const ym = date.slice(0, 7)
+      const dayNum = d
       stampDefs().forEach((def) => {
+        const planned = (monthCards(ym)[def.id] || []).includes(dayNum)
         const earned = (dayData(date).stamps || []).includes(def.id)
         const btn = document.createElement('button')
         btn.type = 'button'
-        btn.className = 'day-stamp-btn' + (earned ? ' is-on' : '')
-        btn.textContent = `${def.emoji} ${def.name}`
+        btn.className = 'day-stamp-btn' + (earned ? ' is-on' : '') + (planned && !earned ? ' is-due' : '')
+        btn.textContent = `${def.emoji} ${def.name}${planned && !earned ? '(今日目標)' : ''}`
         btn.addEventListener('click', () => {
           const current = dayData(date).stamps || []
           const next = current.includes(def.id)
             ? current.filter((id) => id !== def.id)
             : [...current, def.id]
           btn.classList.toggle('is-on', next.includes(def.id))
-          saveDay(date, { stamps: next }).then(() => {
-            refreshDayCell(container, date)
-            refreshCards(date.slice(0, 7))
-          })
+          btn.classList.toggle('is-due', planned && !next.includes(def.id))
+          btn.textContent = `${def.emoji} ${def.name}${planned && !next.includes(def.id) ? '(今日目標)' : ''}`
+          saveDay(date, { stamps: next })
         })
         stampRow.append(btn)
       })
@@ -704,19 +718,109 @@
     }
 
     const area = document.createElement('textarea')
+    area.className = 'day-modal-area'
     area.placeholder = '這天發生了什麼、要做什麼…'
     area.value = dayData(date).note || ''
     const commit = () => {
       const val = area.value
       const prev = dayData(date).note || ''
-      if (val !== prev) saveDay(date, { note: val }).then(() => refreshDayCell(container, date))
+      if (val !== prev) saveDay(date, { note: val })
     }
     area.addEventListener('input', debounce(commit, 1500))
     area.addEventListener('blur', commit)
     box.append(area)
 
-    container.append(box)
+    const close = document.createElement('button')
+    close.className = 'modal-close'
+    close.textContent = '完成'
+    close.addEventListener('click', closeDayModal)
+    box.append(close)
+
+    document.getElementById('dayModal').hidden = false
     area.focus()
+  }
+
+  /* ---- 週檢視 ---- */
+  const mondayOf = (dateStr) => {
+    const [y, m, d] = dateStr.split('-').map(Number)
+    const dt = new Date(y, m - 1, d)
+    dt.setDate(dt.getDate() - ((dt.getDay() + 6) % 7))
+    return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`
+  }
+
+  const shiftDate = (dateStr, days) => {
+    const [y, m, d] = dateStr.split('-').map(Number)
+    const dt = new Date(y, m - 1, d + days)
+    return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`
+  }
+
+  const renderWeek = (view, monday) => {
+    const dates = Array.from({ length: 7 }, (_, i) => shiftDate(monday, i))
+
+    const nav = document.createElement('div')
+    nav.className = 'month-nav'
+    const prev = document.createElement('a')
+    prev.textContent = '← 上週'
+    prev.href = `#/week/${shiftDate(monday, -7)}`
+    const title = document.createElement('h2')
+    const [, sm, sd] = dates[0].split('-').map(Number)
+    const [, em, ed] = dates[6].split('-').map(Number)
+    title.textContent = `${sm}/${sd} – ${em}/${ed}`
+    const sub = document.createElement('small')
+    sub.textContent = monday === mondayOf(todayStr()) ? 'THIS WEEK' : 'WEEK VIEW'
+    title.append(sub)
+    const next = document.createElement('a')
+    next.textContent = '下週 →'
+    next.href = `#/week/${shiftDate(monday, 7)}`
+    nav.append(prev, title, next)
+    view.append(nav)
+
+    const list = document.createElement('div')
+    list.className = 'week-list'
+    dates.forEach((date) => {
+      const [, m, d] = date.split('-').map(Number)
+      const inRange = dateInRange(date)
+      const row = document.createElement('div')
+      row.className = 'week-row'
+        + (date === todayStr() ? ' is-today' : '')
+        + (inRange ? '' : ' is-out')
+
+      const left = document.createElement('div')
+      left.className = 'wr-date'
+      const num = document.createElement('b')
+      num.textContent = d
+      const meta = document.createElement('span')
+      meta.textContent = `${WEEKDAY_NAMES[weekdayOf(date.slice(0, 7), d)]} ・ ${m} 月`
+      left.append(num, meta)
+
+      const stampsEl = document.createElement('div')
+      stampsEl.className = 'wr-stamps'
+      if (inRange && settings().stamps) {
+        const ym = date.slice(0, 7)
+        const earned = dayData(date).stamps || []
+        stampDefs().forEach((def) => {
+          const planned = (monthCards(ym)[def.id] || []).includes(d)
+          const has = earned.includes(def.id)
+          if (!planned && !has) return
+          const mark = document.createElement('span')
+          mark.className = 'wr-stamp' + (has ? '' : ' is-due')
+          mark.textContent = def.emoji
+          mark.title = `${def.name}${has ? ':已蓋' : ':今日目標,還沒蓋'}`
+          stampsEl.append(mark)
+        })
+      }
+
+      const noteEl = document.createElement('div')
+      noteEl.className = 'wr-note'
+      const note = (dayData(date).note || '').trim()
+      noteEl.textContent = inRange ? (note || '—') : '(規劃本範圍外)'
+      if (!note) noteEl.classList.add('is-empty')
+
+      row.append(left, stampsEl, noteEl)
+      if (inRange) row.addEventListener('click', () => openDayModal(date))
+      list.append(row)
+    })
+    view.append(list)
   }
 
   /* ---- 月頁 ---- */
@@ -790,10 +894,7 @@
     grid.addEventListener('click', (e) => {
       const cell = e.target.closest('.day-cell')
       if (!cell || !cell.dataset.date) return
-      selectedDate = cell.dataset.date
-      grid.querySelectorAll('.day-cell.is-selected').forEach((c) => c.classList.remove('is-selected'))
-      cell.classList.add('is-selected')
-      renderDayEditor(calWrap, selectedDate)
+      openDayModal(cell.dataset.date)
     })
 
     calWrap.append(grid)
@@ -936,10 +1037,16 @@
     const view = document.getElementById('view')
     view.innerHTML = ''
     const hash = location.hash.replace(/^#\//, '')
+    const isWeek = hash === 'week' || hash.startsWith('week/')
+    document.getElementById('navYear').classList.toggle('is-active', !isWeek && !monthList.includes(hash))
+    document.getElementById('navWeek').classList.toggle('is-active', isWeek)
     if (monthList.includes(hash)) {
       renderMonth(view, hash)
+    } else if (isWeek) {
+      const dateArg = hash.split('/')[1]
+      const valid = dateArg && /^\d{4}-\d{2}-\d{2}$/.test(dateArg)
+      renderWeek(view, mondayOf(valid ? dateArg : todayStr()))
     } else {
-      selectedDate = null
       renderYear(view)
     }
   }
@@ -953,6 +1060,9 @@
   const boot = async () => {
     initLock()
     initSettings()
+    document.getElementById('dayModal').addEventListener('click', (e) => {
+      if (e.target.id === 'dayModal') closeDayModal()
+    })
     initProgress()
     updateTodayLeft()
     setInterval(updateTodayLeft, 30000)

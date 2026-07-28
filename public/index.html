@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=7">
+  <link rel="stylesheet" href="style.css?v=8">
 </head>
 <body>
 
@@ -23,7 +23,13 @@
   </div>
 
   <header class="topbar">
-    <a class="logo" href="#/">✓ PlanDone</a>
+    <div class="topbar-left">
+      <a class="logo" href="#/">✓ PlanDone</a>
+      <nav class="view-nav">
+        <a href="#/" id="navYear">年</a>
+        <a href="#/week" id="navWeek">週</a>
+      </nav>
+    </div>
     <div class="topbar-right">
       <span class="chip chip-streak" id="streakChip" hidden></span>
       <span class="chip" id="todayLeft" hidden></span>
@@ -67,10 +73,14 @@
     <p class="yp-caption" id="ypCaption"></p>
   </div>
 
+  <div class="modal" id="dayModal" hidden>
+    <div class="modal-box day-modal-box" id="dayModalBox"></div>
+  </div>
+
   <main id="view" class="view"></main>
 
   <p class="savebar" id="saveBar" hidden>已儲存 ✓</p>
 
-  <script src="app.js?v=7"></script>
+  <script src="app.js?v=8"></script>
 </body>
 </html>
