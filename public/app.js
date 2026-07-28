@@ -5,14 +5,8 @@
   const CODE_KEY = 'plandone-code'
   const MONTH_COUNT = 12
   const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日']
-  const WAFU = {
-    1: '睦月', 2: '如月', 3: '彌生', 4: '卯月', 5: '皐月', 6: '水無月',
-    7: '文月', 8: '葉月', 9: '長月', 10: '神無月', 11: '霜月', 12: '師走'
-  }
   const EN_MONTHS = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
     'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER']
-  const YEAR_FIRST_DAY = new Date(2026, 6, 1)
-  const YEAR_TOTAL_DAYS = 365
   const DEFAULT_THEME = '始'
 
   let state = { months: {}, days: {}, meta: {} }
@@ -94,20 +88,22 @@
     flashSaved()
   }
 
-  /* ---- 年進度條 ---- */
+  /* ---- 年進度條(曆年:今年 1/1 → 12/31) ---- */
   const initProgress = () => {
     const now = new Date()
-    const dayIndex = Math.min(
-      Math.max(Math.floor((now - YEAR_FIRST_DAY) / 86400000) + 1, 1),
-      YEAR_TOTAL_DAYS
-    )
-    const percent = Math.round((dayIndex / YEAR_TOTAL_DAYS) * 1000) / 10
+    const year = now.getFullYear()
+    const firstDay = new Date(year, 0, 1)
+    const totalDays = Math.round((new Date(year + 1, 0, 1) - firstDay) / 86400000)
+    const dayIndex = Math.floor((now - firstDay) / 86400000) + 1
+    const percent = Math.round((dayIndex / totalDays) * 1000) / 10
     document.getElementById('ypFill').style.width = `${percent}%`
+    document.getElementById('ypStart').textContent = `JAN '${String(year).slice(2)}`
+    document.getElementById('ypEnd').textContent = `DEC '${String(year).slice(2)}`
     const caption = document.getElementById('ypCaption')
     caption.innerHTML = ''
     const dayText = document.createElement('em')
-    dayText.textContent = `DAY ${dayIndex} / ${YEAR_TOTAL_DAYS}`
-    caption.append(dayText, ` ・ ${percent}% ・ 一歩ずつ`)
+    dayText.textContent = `DAY ${dayIndex} / ${totalDays}`
+    caption.append(dayText, ` ・ ${percent}% ・ STEP BY STEP`)
   }
 
   /* ---- 通行碼鎖 ---- */
@@ -194,14 +190,12 @@
       const monthNum = Number(ym.split('-')[1])
       const wafu = document.createElement('div')
       wafu.className = 'month-card-wafu'
-      const wafuName = document.createElement('b')
-      wafuName.textContent = WAFU[monthNum]
-      wafu.append(wafuName, ` ・ ${EN_MONTHS[monthNum - 1]}`)
+      wafu.textContent = EN_MONTHS[monthNum - 1]
 
       if (state.months[ym] && state.months[ym].done) {
         const stamp = document.createElement('span')
         stamp.className = 'card-stamp'
-        stamp.textContent = '済'
+        stamp.textContent = 'DONE'
         card.append(stamp)
       }
 
@@ -237,7 +231,7 @@
     title.textContent = ymLabel(ym)
     const monthNum = Number(ym.split('-')[1])
     const sub = document.createElement('small')
-    sub.textContent = `${WAFU[monthNum]} ・ ${EN_MONTHS[monthNum - 1]}`
+    sub.textContent = EN_MONTHS[monthNum - 1]
     title.append(sub)
 
     const next = document.createElement('a')
@@ -322,7 +316,7 @@
 
     const stamp = document.createElement('button')
     stamp.className = 'stamp-btn' + (state.months[ym] && state.months[ym].done ? ' is-done' : '')
-    stamp.textContent = '済'
+    stamp.textContent = 'DONE'
     stamp.title = '這個月的計畫完成了就蓋章'
     stamp.addEventListener('click', () => {
       const next = !(state.months[ym] && state.months[ym].done)

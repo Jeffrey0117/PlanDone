@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=3">
+  <link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
 
@@ -29,7 +29,7 @@
 
   <div class="year-progress">
     <div class="yp-row">
-      <span class="yp-edge">JUL '26</span>
+      <span class="yp-edge" id="ypStart"></span>
       <div class="yp-track">
         <div class="yp-fill" id="ypFill">
           <svg class="yp-buddy" viewBox="0 0 28 28" aria-hidden="true">
@@ -42,7 +42,7 @@
           </svg>
         </div>
       </div>
-      <span class="yp-edge">JUN '27</span>
+      <span class="yp-edge" id="ypEnd"></span>
     </div>
     <p class="yp-caption" id="ypCaption"></p>
   </div>
@@ -51,6 +51,6 @@
 
   <p class="savebar" id="saveBar" hidden>已儲存 ✓</p>
 
-  <script src="app.js?v=3"></script>
+  <script src="app.js?v=4"></script>
 </body>
 </html>

@@ -218,14 +218,14 @@ button, input, textarea { font-family: inherit; }
   position: absolute;
   top: .5rem;
   right: .55rem;
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
   border: 2px solid var(--accent);
   border-radius: 50%;
   color: var(--accent);
-  font-family: var(--serif);
-  font-size: .95rem;
+  font-size: .5rem;
   font-weight: 800;
+  letter-spacing: .04em;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -272,15 +272,15 @@ button, input, textarea { font-family: inherit; }
   margin-bottom: .4rem;
 }
 .stamp-btn {
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   border: 2px solid var(--accent);
   border-radius: 50%;
   background: none;
   color: var(--accent);
-  font-family: var(--serif);
-  font-size: 1.15rem;
+  font-size: .6rem;
   font-weight: 800;
+  letter-spacing: .05em;
   cursor: pointer;
   transform: rotate(-10deg);
   opacity: .45;
