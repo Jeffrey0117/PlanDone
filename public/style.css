@@ -816,19 +816,54 @@ button, input, textarea { font-family: inherit; }
   text-decoration: none;
 }
 .vocab-link:hover { text-decoration: underline; }
-.vb-row.is-editing { gap: .4rem; }
-.vb-row input {
-  border: 1px solid var(--accent);
+.vb-meaning.is-blank { font-style: italic; opacity: .55; }
+.vb-entry {
+  background: #fff;
+  border: 1px solid var(--paper-line);
+  border-radius: 8px;
+  padding: .5rem .9rem;
+  margin-bottom: .35rem;
+  cursor: pointer;
+}
+.vb-entry:hover { border-color: var(--accent); }
+.vb-entry .vb-row {
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  cursor: inherit;
+}
+.vb-entry .vb-row:hover { border: 0; }
+.vb-ex { font-size: .85rem; color: var(--ink); margin-top: .3rem; font-style: italic; }
+.vb-ex-zh { font-size: .82rem; color: var(--ink-soft); margin-top: .1rem; }
+.vb-ex-zh.is-hidden { filter: blur(6px); cursor: pointer; user-select: none; }
+.vb-entry.is-editing { border-color: var(--accent); cursor: default; }
+.vb-edit-row { display: flex; gap: .4rem; margin-bottom: .35rem; }
+.vb-entry input {
+  border: 1px solid var(--paper-line);
   border-radius: 6px;
-  padding: .3rem .6rem;
+  padding: .32rem .6rem;
   font-size: .9rem;
   background: #fffdf5;
   min-width: 0;
 }
-.vb-row input:focus { outline: none; }
-.vb-row .v-word { flex: 2; font-weight: 700; }
-.vb-row .v-meaning { flex: 3; }
-.vb-meaning.is-blank { font-style: italic; opacity: .55; }
+.vb-entry input:focus { outline: none; border-color: var(--accent); }
+.vb-entry .v-word { flex: 2; font-weight: 700; }
+.vb-entry .v-meaning { flex: 3; }
+.vb-edit-full { width: 100%; margin-bottom: .35rem; }
+.vb-ex-toggle {
+  border: 1px solid var(--paper-line);
+  border-radius: 8px;
+  background: #fff;
+  font-size: .82rem;
+  padding: .45rem .8rem;
+  cursor: pointer;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.vb-ex-toggle.is-on { border-color: var(--accent); color: var(--accent); font-weight: 700; }
+.vb-quick-wrap { margin-bottom: 1.1rem; }
+.vb-quick-ex { margin-top: .4rem; }
 .v-del {
   background: none;
   border: 0;

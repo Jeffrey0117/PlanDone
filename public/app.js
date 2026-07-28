@@ -48,18 +48,62 @@
   const settings = () => ({ ...DEFAULT_SETTINGS, ...((state.meta && state.meta.settings) || {}) })
   const stampDefs = () => (state.meta && state.meta.stampDefs) || DEFAULT_STAMPS
   const dayData = (date) => state.days[date] || {}
-  const parseVocab = (text) => (text || '').split('\n')
-    .map((l) => l.trim()).filter(Boolean)
-    .map((line) => {
-      const m = line.match(/^(.*?)\s*[=:：\-–]\s*(.*)$/)
-      if (m) return { word: m[1], meaning: m[2] }
-      const cjk = line.match(/^([A-Za-z][A-Za-z\s'’.-]*?)\s+([一-鿿].*)$/)
-      if (cjk) return { word: cjk[1], meaning: cjk[2] }
-      return { word: line, meaning: '' }
+  const isCjkDominant = (s) => {
+    const cjk = (s.match(/[一-鿿]/g) || []).length
+    return cjk > 0 && cjk >= s.replace(/\s/g, '').length / 2
+  }
+
+  /* 條目 = {word, meaning, example, exampleZh}
+     儲存格式: "word = 意思" / "> 例句" / ">> 例句翻譯"
+     沒有標記的舊資料用啟發式歸位(英文長句→例句、中文句→例句翻譯) */
+  const parseVocab = (text) => {
+    const entries = []
+    const cur = () => entries[entries.length - 1]
+    ;(text || '').split('\n').map((l) => l.trim()).filter(Boolean).forEach((line) => {
+      if (line.startsWith('>>')) {
+        if (cur()) cur().exampleZh = line.slice(2).trim()
+        return
+      }
+      if (line.startsWith('>')) {
+        if (cur()) cur().example = line.slice(1).trim()
+        return
+      }
+      const blank = { word: '', meaning: '', example: '', exampleZh: '' }
+      const m = line.match(/^(.*?)\s*[=:：]\s*(.*)$/)
+      if (m) {
+        entries.push({ ...blank, word: m[1], meaning: m[2] })
+        return
+      }
+      const cjkSplit = line.match(/^([A-Za-z][A-Za-z\s'’.,-]*?)\s+([一-鿿].*)$/)
+      if (cjkSplit && cjkSplit[1].split(/\s+/).length <= 3) {
+        entries.push({ ...blank, word: cjkSplit[1], meaning: cjkSplit[2] })
+        return
+      }
+      const words = line.split(/\s+/).length
+      const isLatinSentence = /^[A-Za-z]/.test(line) && (words >= 4 || line.length > 30)
+      if (isLatinSentence && cur() && !cur().example) {
+        cur().example = line
+        return
+      }
+      if (isCjkDominant(line) && cur() && cur().example && !cur().exampleZh) {
+        cur().exampleZh = line
+        return
+      }
+      entries.push({ ...blank, word: line })
     })
+    return entries
+  }
+
   const serializeVocab = (entries) => entries
-    .filter((e) => e.word.trim() || e.meaning.trim())
-    .map((e) => e.meaning.trim() ? `${e.word.trim()} = ${e.meaning.trim()}` : e.word.trim())
+    .filter((e) => (e.word || '').trim() || (e.meaning || '').trim())
+    .flatMap((e) => {
+      const lines = [(e.meaning || '').trim()
+        ? `${e.word.trim()} = ${e.meaning.trim()}`
+        : e.word.trim()]
+      if ((e.example || '').trim()) lines.push(`> ${e.example.trim()}`)
+      if ((e.exampleZh || '').trim()) lines.push(`>> ${e.exampleZh.trim()}`)
+      return lines
+    })
     .join('\n')
   const vocabCount = (date) => parseVocab(dayData(date).vocab).length
   const hasEntry = (date) => {
@@ -808,24 +852,48 @@
     view.append(controls)
 
     const quick = document.createElement('div')
-    quick.className = 'vb-quick'
+    quick.className = 'vb-quick-wrap'
+    const quickRow = document.createElement('div')
+    quickRow.className = 'vb-quick'
     const qWord = document.createElement('input')
     qWord.placeholder = '新單字'
     const qMean = document.createElement('input')
     qMean.placeholder = '意思'
+    const qExToggle = document.createElement('button')
+    qExToggle.type = 'button'
+    qExToggle.className = 'vb-ex-toggle'
+    qExToggle.textContent = '+例句'
     const qAdd = document.createElement('button')
     qAdd.type = 'button'
     qAdd.textContent = '+ 記到今天'
+    quickRow.append(qWord, qMean, qExToggle, qAdd)
+
+    const quickEx = document.createElement('div')
+    quickEx.className = 'vb-quick vb-quick-ex'
+    quickEx.hidden = true
+    const qEx = document.createElement('input')
+    qEx.placeholder = '例句(英文)'
+    const qExZh = document.createElement('input')
+    qExZh.placeholder = '例句翻譯'
+    quickEx.append(qEx, qExZh)
+    qExToggle.addEventListener('click', () => {
+      quickEx.hidden = !quickEx.hidden
+      qExToggle.classList.toggle('is-on', !quickEx.hidden)
+      if (!quickEx.hidden) qEx.focus()
+    })
+
     const doQuickAdd = () => {
       if (!qWord.value.trim()) return
       const today = todayStr()
       if (!dateInRange(today)) return
-      const entries = [...parseVocab(dayData(today).vocab), { word: qWord.value, meaning: qMean.value }]
+      const entry = { word: qWord.value, meaning: qMean.value, example: qEx.value, exampleZh: qExZh.value }
+      const entries = [...parseVocab(dayData(today).vocab), entry]
       saveDay(today, { vocab: serializeVocab(entries) }).then(render)
     }
     qAdd.addEventListener('click', doQuickAdd)
-    qMean.addEventListener('keydown', (e) => { if (e.key === 'Enter') doQuickAdd() })
-    quick.append(qWord, qMean, qAdd)
+    ;[qMean, qExZh].forEach((el) =>
+      el.addEventListener('keydown', (e) => { if (e.key === 'Enter') doQuickAdd() }))
+    quick.append(quickRow, quickEx)
     view.append(quick)
 
     const listWrap = document.createElement('div')
@@ -851,40 +919,52 @@
         group.append(gh)
 
         shown.forEach((entry) => {
-          const row = document.createElement('div')
-          row.className = 'vb-row'
+          const box = document.createElement('div')
+          box.className = 'vb-entry'
 
           const startEdit = () => {
-            if (row.classList.contains('is-editing')) return
-            row.classList.add('is-editing')
-            row.innerHTML = ''
+            if (box.classList.contains('is-editing')) return
+            box.classList.add('is-editing')
+            box.innerHTML = ''
+            const topRow = document.createElement('div')
+            topRow.className = 'vb-edit-row'
             const wIn = document.createElement('input')
             wIn.className = 'v-word'
+            wIn.placeholder = '單字'
             wIn.value = entry.word
             const mIn = document.createElement('input')
             mIn.className = 'v-meaning'
             mIn.placeholder = '意思'
             mIn.value = entry.meaning
+            topRow.append(wIn, mIn)
+            const exIn = document.createElement('input')
+            exIn.className = 'vb-edit-full'
+            exIn.placeholder = '例句(英文)'
+            exIn.value = entry.example
+            const exZhIn = document.createElement('input')
+            exZhIn.className = 'vb-edit-full'
+            exZhIn.placeholder = '例句翻譯'
+            exZhIn.value = entry.exampleZh
             const commit = () => {
               const all = parseVocab(dayData(date).vocab)
-              const next = all.map((x, i) =>
-                i === entry.idx ? { word: wIn.value, meaning: mIn.value } : x)
+              const next = all.map((x, i) => (i === entry.idx
+                ? { word: wIn.value, meaning: mIn.value, example: exIn.value, exampleZh: exZhIn.value }
+                : x))
               saveDay(date, { vocab: serializeVocab(next) }).then(renderList)
             }
-            ;[wIn, mIn].forEach((input) => {
-              input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur() })
-            })
+            const inputs = [wIn, mIn, exIn, exZhIn]
             let blurTimer = null
-            ;[wIn, mIn].forEach((input) => {
-              input.addEventListener('blur', () => {
-                blurTimer = setTimeout(commit, 120)
-              })
+            inputs.forEach((input) => {
+              input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur() })
+              input.addEventListener('blur', () => { blurTimer = setTimeout(commit, 120) })
               input.addEventListener('focus', () => clearTimeout(blurTimer))
             })
-            row.append(wIn, mIn)
+            box.append(topRow, exIn, exZhIn)
             wIn.focus()
           }
 
+          const row = document.createElement('div')
+          row.className = 'vb-row'
           const word = document.createElement('b')
           word.textContent = entry.word
           const meaning = document.createElement('span')
@@ -901,18 +981,40 @@
           del.type = 'button'
           del.className = 'v-del'
           del.textContent = '×'
+          del.title = '刪除這個單字(含例句)'
           del.addEventListener('click', (e) => {
             e.stopPropagation()
             const next = parseVocab(dayData(date).vocab).filter((_, i) => i !== entry.idx)
             saveDay(date, { vocab: serializeVocab(next) }).then(render)
           })
           row.append(word, meaning, del)
-          row.addEventListener('click', (e) => {
+          box.append(row)
+
+          if (entry.example) {
+            const ex = document.createElement('p')
+            ex.className = 'vb-ex'
+            ex.textContent = entry.example
+            box.append(ex)
+          }
+          if (entry.exampleZh) {
+            const exZh = document.createElement('p')
+            exZh.className = 'vb-ex-zh' + (vocabHideMeanings ? ' is-hidden' : '')
+            exZh.addEventListener('click', (e) => {
+              if (vocabHideMeanings) {
+                e.stopPropagation()
+                exZh.classList.toggle('is-hidden')
+              }
+            })
+            exZh.textContent = entry.exampleZh
+            box.append(exZh)
+          }
+
+          box.addEventListener('click', (e) => {
             if (e.target === del) return
-            if (vocabHideMeanings && e.target === meaning) return
+            if (vocabHideMeanings && (e.target === meaning || e.target.classList.contains('vb-ex-zh'))) return
             startEdit()
           })
-          group.append(row)
+          group.append(box)
         })
         listWrap.append(group)
       })
