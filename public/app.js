@@ -48,7 +48,17 @@
   const settings = () => ({ ...DEFAULT_SETTINGS, ...((state.meta && state.meta.settings) || {}) })
   const stampDefs = () => (state.meta && state.meta.stampDefs) || DEFAULT_STAMPS
   const dayData = (date) => state.days[date] || {}
-  const vocabCount = (date) => ((dayData(date).vocab || '').split('\n').filter((l) => l.trim()).length)
+  const parseVocab = (text) => (text || '').split('\n')
+    .map((l) => l.trim()).filter(Boolean)
+    .map((line) => {
+      const m = line.match(/^(.*?)\s*[=:：\-–]\s*(.*)$/)
+      return m ? { word: m[1], meaning: m[2] } : { word: line, meaning: '' }
+    })
+  const serializeVocab = (entries) => entries
+    .filter((e) => e.word.trim() || e.meaning.trim())
+    .map((e) => e.meaning.trim() ? `${e.word.trim()} = ${e.meaning.trim()}` : e.word.trim())
+    .join('\n')
+  const vocabCount = (date) => parseVocab(dayData(date).vocab).length
   const hasEntry = (date) => {
     const d = dayData(date)
     return Boolean((d.note && d.note.trim()) || (d.stamps && d.stamps.length) || vocabCount(date) > 0)
@@ -753,18 +763,10 @@
     vocabLabel.append(vocabEn)
     box.append(vocabLabel)
 
-    const vocabArea = document.createElement('textarea')
-    vocabArea.className = 'vocab-area'
-    vocabArea.placeholder = 'resilient = 有韌性的\nprocrastinate = 拖延'
-    vocabArea.value = dayData(date).vocab || ''
-    const commitVocab = () => {
-      const val = vocabArea.value
-      const prev = dayData(date).vocab || ''
-      if (val !== prev) saveDay(date, { vocab: val })
-    }
-    vocabArea.addEventListener('input', debounce(commitVocab, 1500))
-    vocabArea.addEventListener('blur', commitVocab)
-    box.append(vocabArea)
+    const vocabWrap = document.createElement('div')
+    vocabWrap.className = 'vocab-rows'
+    renderVocabEditor(vocabWrap, date)
+    box.append(vocabWrap)
 
     const close = document.createElement('button')
     close.className = 'modal-close'
@@ -774,6 +776,192 @@
 
     document.getElementById('dayModal').hidden = false
     area.focus()
+  }
+
+  /* ---- 單字列編輯器(日彈窗用) ---- */
+  const renderVocabEditor = (wrap, date) => {
+    wrap.innerHTML = ''
+
+    const saveRows = () => {
+      const entries = [...wrap.querySelectorAll('.vocab-row')].map((r) => ({
+        word: r.querySelector('.v-word').value,
+        meaning: r.querySelector('.v-meaning').value
+      }))
+      const text = serializeVocab(entries)
+      if (text !== (dayData(date).vocab || '')) saveDay(date, { vocab: text })
+    }
+
+    const addRow = (entry) => {
+      const row = document.createElement('div')
+      row.className = 'vocab-row'
+      const word = document.createElement('input')
+      word.className = 'v-word'
+      word.placeholder = '單字'
+      word.value = entry.word
+      const meaning = document.createElement('input')
+      meaning.className = 'v-meaning'
+      meaning.placeholder = '意思'
+      meaning.value = entry.meaning
+      const del = document.createElement('button')
+      del.type = 'button'
+      del.className = 'v-del'
+      del.textContent = '×'
+      del.title = '刪除這個單字'
+      del.addEventListener('click', () => {
+        row.remove()
+        saveRows()
+        if (!wrap.querySelector('.vocab-row')) addRow({ word: '', meaning: '' })
+      })
+      ;[word, meaning].forEach((input) => {
+        input.addEventListener('blur', saveRows)
+        input.addEventListener('input', () => {
+          const rows = wrap.querySelectorAll('.vocab-row')
+          const last = rows[rows.length - 1]
+          if (last === row && (word.value.trim() || meaning.value.trim())) {
+            addRow({ word: '', meaning: '' })
+          }
+        })
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault()
+            if (input === word) meaning.focus()
+            else {
+              saveRows()
+              const rows = wrap.querySelectorAll('.vocab-row .v-word')
+              const next = rows[[...rows].indexOf(word) + 1]
+              if (next) next.focus()
+            }
+          }
+        })
+      })
+      row.append(word, meaning, del)
+      wrap.append(row)
+    }
+
+    const entries = parseVocab(dayData(date).vocab)
+    entries.forEach(addRow)
+    addRow({ word: '', meaning: '' })
+  }
+
+  /* ---- 單字本 ---- */
+  let vocabHideMeanings = false
+
+  const renderVocabBook = (view) => {
+    const dates = Object.keys(state.days)
+      .filter((d) => vocabCount(d) > 0)
+      .sort((a, b) => b.localeCompare(a))
+    const total = dates.reduce((sum, d) => sum + vocabCount(d), 0)
+
+    const headRow = document.createElement('div')
+    headRow.className = 'vb-head'
+    const title = document.createElement('h2')
+    title.textContent = '單字本'
+    const sub = document.createElement('small')
+    sub.textContent = `VOCABULARY BOOK ・ ${total} WORDS`
+    title.append(sub)
+    headRow.append(title)
+    view.append(headRow)
+
+    const controls = document.createElement('div')
+    controls.className = 'vb-controls'
+    const search = document.createElement('input')
+    search.className = 'vb-search'
+    search.placeholder = '搜尋單字或意思…'
+    const hideBtn = document.createElement('button')
+    hideBtn.type = 'button'
+    hideBtn.className = 'vb-hide' + (vocabHideMeanings ? ' is-on' : '')
+    hideBtn.textContent = vocabHideMeanings ? '顯示意思' : '遮住意思(自測)'
+    controls.append(search, hideBtn)
+    view.append(controls)
+
+    const quick = document.createElement('div')
+    quick.className = 'vb-quick'
+    const qWord = document.createElement('input')
+    qWord.placeholder = '新單字'
+    const qMean = document.createElement('input')
+    qMean.placeholder = '意思'
+    const qAdd = document.createElement('button')
+    qAdd.type = 'button'
+    qAdd.textContent = '+ 記到今天'
+    const doQuickAdd = () => {
+      if (!qWord.value.trim()) return
+      const today = todayStr()
+      if (!dateInRange(today)) return
+      const entries = [...parseVocab(dayData(today).vocab), { word: qWord.value, meaning: qMean.value }]
+      saveDay(today, { vocab: serializeVocab(entries) }).then(render)
+    }
+    qAdd.addEventListener('click', doQuickAdd)
+    qMean.addEventListener('keydown', (e) => { if (e.key === 'Enter') doQuickAdd() })
+    quick.append(qWord, qMean, qAdd)
+    view.append(quick)
+
+    const listWrap = document.createElement('div')
+    listWrap.className = 'vb-list'
+    view.append(listWrap)
+
+    const renderList = () => {
+      listWrap.innerHTML = ''
+      const q = search.value.trim().toLowerCase()
+      dates.forEach((date) => {
+        const entries = parseVocab(dayData(date).vocab)
+        const shown = entries
+          .map((e, idx) => ({ ...e, idx }))
+          .filter((e) => !q || e.word.toLowerCase().includes(q) || e.meaning.toLowerCase().includes(q))
+        if (shown.length === 0) return
+
+        const [, m, d] = date.split('-').map(Number)
+        const group = document.createElement('div')
+        group.className = 'vb-group'
+        const gh = document.createElement('p')
+        gh.className = 'vb-date'
+        gh.textContent = `${m}/${d} ${WEEKDAY_NAMES[weekdayOf(date.slice(0, 7), d)]}`
+        group.append(gh)
+
+        shown.forEach((entry) => {
+          const row = document.createElement('div')
+          row.className = 'vb-row'
+          const word = document.createElement('b')
+          word.textContent = entry.word
+          const meaning = document.createElement('span')
+          meaning.className = 'vb-meaning' + (vocabHideMeanings ? ' is-hidden' : '')
+          meaning.textContent = entry.meaning
+          meaning.addEventListener('click', (e) => {
+            if (vocabHideMeanings) {
+              e.stopPropagation()
+              meaning.classList.toggle('is-hidden')
+            }
+          })
+          const del = document.createElement('button')
+          del.type = 'button'
+          del.className = 'v-del'
+          del.textContent = '×'
+          del.addEventListener('click', (e) => {
+            e.stopPropagation()
+            const next = parseVocab(dayData(date).vocab).filter((_, i) => i !== entry.idx)
+            saveDay(date, { vocab: serializeVocab(next) }).then(render)
+          })
+          row.append(word, meaning, del)
+          row.addEventListener('click', () => openDayModal(date))
+          group.append(row)
+        })
+        listWrap.append(group)
+      })
+      if (!listWrap.children.length) {
+        const empty = document.createElement('p')
+        empty.className = 'vb-empty'
+        empty.textContent = q ? '找不到這個字。' : '還沒有單字 — 上面直接記第一個,或點任何一天的單字卡。'
+        listWrap.append(empty)
+      }
+    }
+
+    search.addEventListener('input', debounce(renderList, 200))
+    hideBtn.addEventListener('click', () => {
+      vocabHideMeanings = !vocabHideMeanings
+      hideBtn.classList.toggle('is-on', vocabHideMeanings)
+      hideBtn.textContent = vocabHideMeanings ? '顯示意思' : '遮住意思(自測)'
+      renderList()
+    })
+    renderList()
   }
 
   /* ---- 週檢視 ---- */
@@ -1120,14 +1308,18 @@
     view.innerHTML = ''
     const hash = location.hash.replace(/^#\//, '')
     const isWeek = hash === 'week' || hash.startsWith('week/')
-    document.getElementById('navYear').classList.toggle('is-active', !isWeek && !monthList.includes(hash))
+    const isVocab = hash === 'vocab'
+    document.getElementById('navYear').classList.toggle('is-active', !isWeek && !isVocab && !monthList.includes(hash))
     document.getElementById('navWeek').classList.toggle('is-active', isWeek)
+    document.getElementById('navVocab').classList.toggle('is-active', isVocab)
     if (monthList.includes(hash)) {
       renderMonth(view, hash)
     } else if (isWeek) {
       const dateArg = hash.split('/')[1]
       const valid = dateArg && /^\d{4}-\d{2}-\d{2}$/.test(dateArg)
       renderWeek(view, mondayOf(valid ? dateArg : todayStr()))
+    } else if (isVocab) {
+      renderVocabBook(view)
     } else {
       renderYear(view)
     }
