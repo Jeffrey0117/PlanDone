@@ -41,11 +41,11 @@ function setMonth(ym, patch) {
   return next.months[ym]
 }
 
-function setDayNote(date, note) {
+function setDay(date, patch) {
   const data = load()
   const next = {
     ...data,
-    days: { ...data.days, [date]: { note } }
+    days: { ...data.days, [date]: { ...(data.days[date] || {}), ...patch } }
   }
   save(next)
   return next.days[date]
@@ -58,4 +58,4 @@ function setMeta(patch) {
   return next.meta
 }
 
-module.exports = { getAll, setMonth, setDayNote, setMeta }
+module.exports = { getAll, setMonth, setDay, setMeta }

@@ -30,12 +30,30 @@ const RANGE_END = '2027-06'
 
 const ymSchema = z.string().regex(/^\d{4}-\d{2}$/)
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+const notEmpty = (o) => Object.values(o).some((v) => v !== undefined)
 const monthBodySchema = z.object({
   plan: z.string().max(20000).optional(),
-  done: z.boolean().optional()
-}).refine((o) => o.plan !== undefined || o.done !== undefined, { message: '至少要有一個欄位' })
-const dayBodySchema = z.object({ note: z.string().max(2000) })
-const metaBodySchema = z.object({ theme: z.string().min(1).max(4) })
+  done: z.boolean().optional(),
+  label: z.string().max(12).optional()
+}).refine(notEmpty, { message: '至少要有一個欄位' })
+const dayBodySchema = z.object({
+  note: z.string().max(2000).optional(),
+  stamps: z.array(z.string().max(24)).max(12).optional()
+}).refine(notEmpty, { message: '至少要有一個欄位' })
+const metaBodySchema = z.object({
+  theme: z.string().min(1).max(4).optional(),
+  settings: z.object({
+    yearProgress: z.boolean().optional(),
+    todayCountdown: z.boolean().optional(),
+    streak: z.boolean().optional(),
+    stamps: z.boolean().optional()
+  }).optional(),
+  stampDefs: z.array(z.object({
+    id: z.string().min(1).max(24),
+    name: z.string().min(1).max(12),
+    emoji: z.string().min(1).max(8)
+  })).max(12).optional()
+}).refine(notEmpty, { message: '至少要有一個欄位' })
 
 function ymInRange(ym) {
   return ym >= RANGE_START && ym <= RANGE_END
@@ -93,7 +111,7 @@ app.put('/api/day/:date', (req, res) => {
   if (!body.success) {
     return res.status(400).json({ success: false, error: '內容格式錯誤' })
   }
-  const saved = store.setDayNote(date.data, body.data.note)
+  const saved = store.setDay(date.data, body.data)
   res.json({ success: true, data: saved })
 })
 
