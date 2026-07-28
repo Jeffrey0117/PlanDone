@@ -3,6 +3,19 @@ const { z } = require('zod')
 const { join } = require('node:path')
 const store = require('./src/store')
 
+// PM2 不注入 .env 檔,自帶零依賴 loader(.env.production 優先)
+const { existsSync, readFileSync } = require('node:fs')
+;['.env.production', '.env'].forEach((file) => {
+  const path = join(__dirname, file)
+  if (!existsSync(path)) return
+  readFileSync(path, 'utf8').split(/\r?\n/).forEach((line) => {
+    const match = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/i)
+    if (match && process.env[match[1]] === undefined) {
+      process.env[match[1]] = match[2].replace(/^["']|["']$/g, '')
+    }
+  })
+})
+
 const PLAN_CODE = process.env.PLANDONE_CODE
 if (!PLAN_CODE) {
   console.error('缺少環境變數 PLANDONE_CODE,拒絕啟動')
