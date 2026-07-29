@@ -597,11 +597,11 @@ button, input, textarea { font-family: inherit; }
 .week-chip.wk-c3.is-current, .week-chip.wk-c3:hover { background: var(--wk3-soft); }
 .week-chip.wk-c4.is-current, .week-chip.wk-c4:hover { background: var(--wk4-soft); }
 .week-chip.is-current { font-weight: 800; box-shadow: inset 0 0 0 1px currentColor; }
-.day-cell.day-w0 { background: color-mix(in srgb, var(--wk0-soft) 45%, #fff); }
-.day-cell.day-w1 { background: color-mix(in srgb, var(--wk1-soft) 45%, #fff); }
-.day-cell.day-w2 { background: color-mix(in srgb, var(--wk2-soft) 45%, #fff); }
-.day-cell.day-w3 { background: color-mix(in srgb, var(--wk3-soft) 45%, #fff); }
-.day-cell.day-w4 { background: color-mix(in srgb, var(--wk4-soft) 45%, #fff); }
+.day-cell.day-w0 { background: #fde3de; border-color: #f3c4bd; }
+.day-cell.day-w1 { background: #d9f0e2; border-color: #b9dfc9; }
+.day-cell.day-w2 { background: #dcebfb; border-color: #bdd7f2; }
+.day-cell.day-w3 { background: #faeec5; border-color: #ecd99e; }
+.day-cell.day-w4 { background: #ecdff9; border-color: #d7c2ef; }
 .wk-t0 { color: var(--wk0) !important; }
 .wk-t1 { color: var(--wk1) !important; }
 .wk-t2 { color: var(--wk2) !important; }
