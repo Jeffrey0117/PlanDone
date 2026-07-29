@@ -108,6 +108,43 @@ button, input, textarea { font-family: inherit; }
   white-space: nowrap;
 }
 .chip-streak { color: var(--accent); border-color: var(--accent-soft); background: var(--accent-soft); }
+.chip-today {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+  text-decoration: none;
+  font-weight: 800;
+}
+.chip-today:hover { background: var(--accent); border-color: var(--accent); }
+
+/* ====== 行程總表 ====== */
+.agenda-list { display: grid; gap: .45rem; margin-top: .2rem; }
+.agenda-row {
+  display: flex;
+  gap: 1rem;
+  background: #fff;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  padding: .6rem .9rem;
+  cursor: pointer;
+  transition: border-color .15s ease;
+}
+.agenda-row:hover { border-color: var(--accent); }
+.agenda-row.is-today { border: 2px solid var(--today); background: #fdf3e2; }
+.agenda-row.is-past { opacity: .6; }
+.ag-date { min-width: 6.5em; display: flex; align-items: baseline; gap: .45rem; }
+.ag-date b { font-size: 1.05rem; }
+.ag-date span { font-size: .72rem; color: var(--ink-soft); }
+.ag-items { flex: 1; display: grid; gap: .15rem; }
+.ag-item { font-size: .9rem; }
+.ag-item em {
+  font-style: normal;
+  font-weight: 800;
+  color: var(--accent);
+  font-size: .8rem;
+  margin-right: .3em;
+}
+
 .save-state { border: 0; cursor: default; }
 .save-state.is-saving { color: var(--ink-soft); background: #f1ece0; }
 .save-state.is-saved { color: #3f7d5c; background: #e6f0ea; }

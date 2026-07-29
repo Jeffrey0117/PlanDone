@@ -357,7 +357,17 @@
     return wrap
   }
 
+  const updateTodayChip = () => {
+    const el = document.getElementById('todayChip')
+    const t = todayStr()
+    const [, m, d] = t.split('-').map(Number)
+    el.textContent = `${m}/${d} ${WEEKDAY_NAMES[weekdayOf(t.slice(0, 7), d)]}`
+    el.href = `#/day/${t}`
+    el.title = '今天 — 點了開今天的整頁'
+  }
+
   const updateTodayLeft = () => {
+    updateTodayChip()
     const el = document.getElementById('todayLeft')
     const now = new Date()
     const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
@@ -1538,6 +1548,78 @@
     view.append(spread)
   }
 
+  /* ---- 行程總表 ---- */
+  let agendaShowPast = false
+
+  const renderAgenda = (view) => {
+    const headRow = document.createElement('div')
+    headRow.className = 'vb-head'
+    const title = document.createElement('h2')
+    title.textContent = '行程總表'
+    const sub = document.createElement('small')
+    sub.textContent = 'AGENDA ・ 只列有行程的日子'
+    title.append(sub)
+    headRow.append(title)
+    view.append(headRow)
+
+    const pastToggle = document.createElement('button')
+    pastToggle.type = 'button'
+    pastToggle.className = 'vb-hide' + (agendaShowPast ? ' is-on' : '')
+    pastToggle.textContent = agendaShowPast ? '隱藏過去' : '含過去'
+    pastToggle.style.margin = '.7rem 0 1rem'
+    pastToggle.addEventListener('click', () => {
+      agendaShowPast = !agendaShowPast
+      render()
+    })
+    view.append(pastToggle)
+
+    const today = todayStr()
+    const dates = Object.keys(state.days)
+      .filter((d) => schedItems(d).length > 0)
+      .filter((d) => agendaShowPast || d >= today)
+      .sort()
+
+    const list = document.createElement('div')
+    list.className = 'agenda-list'
+    dates.forEach((date) => {
+      const [, m, d] = date.split('-').map(Number)
+      const row = document.createElement('div')
+      row.className = 'agenda-row' + (date === today ? ' is-today' : '') + (date < today ? ' is-past' : '')
+      const dateEl = document.createElement('div')
+      dateEl.className = 'ag-date'
+      const num = document.createElement('b')
+      num.textContent = `${m}/${d}`
+      const wd = document.createElement('span')
+      wd.textContent = WEEKDAY_NAMES[weekdayOf(date.slice(0, 7), d)] + (date === today ? ' ・ 今天' : '')
+      dateEl.append(num, wd)
+      const itemsEl = document.createElement('div')
+      itemsEl.className = 'ag-items'
+      schedItems(date).forEach((it) => {
+        const line = document.createElement('div')
+        line.className = 'ag-item'
+        if (it.start) {
+          const time = document.createElement('em')
+          time.textContent = `${it.start}${it.end ? '–' + it.end : ''}`
+          line.append(time)
+        }
+        line.append(` ${it.text}`)
+        itemsEl.append(line)
+      })
+      row.append(dateEl, itemsEl)
+      row.addEventListener('click', () => { location.hash = `#/day/${date}` })
+      list.append(row)
+    })
+    if (dates.length === 0) {
+      const empty = document.createElement('p')
+      empty.className = 'vb-empty'
+      empty.textContent = agendaShowPast
+        ? '整本還沒有任何行程。'
+        : '接下來沒有排定的行程 — 到月曆點日期數字進日頁加一筆。'
+      list.append(empty)
+    }
+    view.append(list)
+  }
+
   /* ---- 週檢視 ---- */
   const mondayOf = (dateStr) => {
     const [y, m, d] = dateStr.split('-').map(Number)
@@ -2130,6 +2212,7 @@
       return { type: 'day', key: todayStr() }
     }
     if (hash === 'vocab') return { type: 'vocab', key: '' }
+    if (hash === 'agenda') return { type: 'agenda', key: '' }
     return { type: 'year', key: '' }
   }
 
@@ -2169,6 +2252,7 @@
       add(`${Number(route.key.slice(8))}日`)
     }
     if (route.type === 'vocab') add('單字本')
+    if (route.type === 'agenda') add('行程總表')
   }
 
   let lastRoute = null
@@ -2193,6 +2277,7 @@
     else if (route.type === 'week') renderWeek(view, route.key)
     else if (route.type === 'day') renderDayPage(view, route.key)
     else if (route.type === 'vocab') renderVocabBook(view)
+    else if (route.type === 'agenda') renderAgenda(view)
     else renderYear(view)
   }
 
