@@ -749,6 +749,11 @@
     cell.className = 'day-cell'
     cell.dataset.date = date
     if (date === todayStr()) cell.classList.add('is-today')
+    const cellMonday = mondayOf(date)
+    if (cellMonday.slice(0, 7) === ym) {
+      const wkIdx = mondaysOfMonth(ym).indexOf(cellMonday)
+      if (wkIdx >= 0) cell.classList.add(`day-w${wkIdx % 5}`)
+    }
 
     const top = document.createElement('div')
     top.className = 'day-top'
