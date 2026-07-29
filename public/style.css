@@ -1030,6 +1030,43 @@ button, input, textarea { font-family: inherit; }
 }
 .day-editor textarea:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
 
+/* ====== 日頁(一日跨頁) ====== */
+.day-spread {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2.4rem;
+  position: relative;
+  margin-top: .4rem;
+}
+.day-spread::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: .2rem;
+  bottom: .2rem;
+  border-left: 1.5px dashed var(--paper-line);
+}
+.dp-col { min-width: 0; }
+.day-spread .day-modal-area { min-height: 46vh; }
+.is-today-tag { color: var(--accent) !important; }
+.modal-expand {
+  margin-left: auto;
+  font-size: 1.05rem;
+  color: var(--ink-soft);
+  text-decoration: none;
+  padding: .1em .3em;
+  border-radius: 6px;
+}
+.modal-expand:hover { color: var(--accent); background: var(--accent-soft); }
+.wr-date b { cursor: pointer; border-radius: 6px; padding: 0 .25em; }
+.wr-date b:hover { background: var(--accent-soft); color: var(--accent); }
+
+@media (max-width: 760px) {
+  .day-spread { grid-template-columns: 1fr; gap: 1.4rem; }
+  .day-spread::before { display: none; }
+  .day-spread .day-modal-area { min-height: 34vh; }
+}
+
 /* ====== 週檢視 ====== */
 .week-list { display: grid; gap: .45rem; }
 .week-row {

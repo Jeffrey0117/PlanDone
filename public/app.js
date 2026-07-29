@@ -1139,6 +1139,13 @@
       tag.style.marginLeft = '.5em'
       heading.append(tag)
     }
+    const expand = document.createElement('a')
+    expand.className = 'modal-expand'
+    expand.href = `#/day/${date}`
+    expand.textContent = '⤢'
+    expand.title = '展開成整頁'
+    expand.addEventListener('click', () => { document.getElementById('dayModal').hidden = true })
+    heading.append(expand)
     box.append(heading)
 
     const tabs = document.createElement('div')
@@ -1406,6 +1413,65 @@
     renderList()
   }
 
+  /* ---- 日頁(一日跨頁) ---- */
+  const renderDayPage = (view, date) => {
+    const [, m, d] = date.split('-').map(Number)
+    const isToday = date === todayStr()
+
+    const nav = document.createElement('div')
+    nav.className = 'month-nav'
+    const prev = document.createElement('a')
+    prev.textContent = '‹'
+    prev.title = '前一天'
+    const prevDate = shiftDate(date, -1)
+    if (dateInRange(prevDate)) prev.href = `#/day/${prevDate}`
+    else prev.className = 'nav-hidden'
+    const title = document.createElement('h2')
+    title.textContent = `${m} 月 ${d} 日`
+    const sub = document.createElement('small')
+    sub.textContent = `${WEEKDAY_NAMES[weekdayOf(date.slice(0, 7), d)]}${isToday ? ' ・ TODAY' : ''}`
+    if (isToday) sub.classList.add('is-today-tag')
+    title.append(sub)
+    const next = document.createElement('a')
+    next.textContent = '›'
+    next.title = '後一天'
+    const nextDate = shiftDate(date, 1)
+    if (dateInRange(nextDate)) next.href = `#/day/${nextDate}`
+    else next.className = 'nav-hidden'
+    nav.append(prev, title, next)
+    view.append(nav)
+
+    const spread = document.createElement('div')
+    spread.className = 'day-spread'
+
+    const left = document.createElement('div')
+    left.className = 'dp-col'
+    const schedLabel = document.createElement('p')
+    schedLabel.className = 'plan-label'
+    schedLabel.textContent = '📅 行程'
+    const schedEn = document.createElement('span')
+    schedEn.textContent = 'THE PLAN'
+    schedLabel.append(schedEn)
+    const schedBox = document.createElement('div')
+    renderSchedTab(schedBox, date, () => {})
+    left.append(schedLabel, schedBox)
+
+    const right = document.createElement('div')
+    right.className = 'dp-col'
+    const noteLabel = document.createElement('p')
+    noteLabel.className = 'plan-label'
+    noteLabel.textContent = '✎ 日記'
+    const noteEn = document.createElement('span')
+    noteEn.textContent = 'THE DAY'
+    noteLabel.append(noteEn)
+    const noteBox = document.createElement('div')
+    renderNoteTab(noteBox, date, () => {})
+    right.append(noteLabel, noteBox)
+
+    spread.append(left, right)
+    view.append(spread)
+  }
+
   /* ---- 週檢視 ---- */
   const mondayOf = (dateStr) => {
     const [y, m, d] = dateStr.split('-').map(Number)
@@ -1552,6 +1618,13 @@
       left.className = 'wr-date'
       const num = document.createElement('b')
       num.textContent = d
+      num.title = '開整頁'
+      if (inRange) {
+        num.addEventListener('click', (e) => {
+          e.stopPropagation()
+          location.hash = `#/day/${date}`
+        })
+      }
       const meta = document.createElement('span')
       meta.textContent = `${WEEKDAY_NAMES[weekdayOf(date.slice(0, 7), d)]} ・ ${m} 月`
       left.append(num, meta)
@@ -1985,6 +2058,13 @@
       const valid = dateArg && /^\d{4}-\d{2}-\d{2}$/.test(dateArg)
       return { type: 'week', key: mondayOf(valid ? dateArg : todayStr()) }
     }
+    if (hash.startsWith('day/')) {
+      const dateArg = hash.split('/')[1]
+      if (dateArg && /^\d{4}-\d{2}-\d{2}$/.test(dateArg) && dateInRange(dateArg)) {
+        return { type: 'day', key: dateArg }
+      }
+      return { type: 'day', key: todayStr() }
+    }
     if (hash === 'vocab') return { type: 'vocab', key: '' }
     return { type: 'year', key: '' }
   }
@@ -2019,6 +2099,11 @@
         add('週')
       }
     }
+    if (route.type === 'day') {
+      const ym = route.key.slice(0, 7)
+      add(`${Number(ym.split('-')[1])}月`, `#/${ym}`)
+      add(`${Number(route.key.slice(8))}日`)
+    }
     if (route.type === 'vocab') add('單字本')
   }
 
@@ -2042,6 +2127,7 @@
     document.querySelector('.year-progress').hidden = !settings().yearProgress || route.type === 'month'
     if (route.type === 'month') renderMonth(view, route.key)
     else if (route.type === 'week') renderWeek(view, route.key)
+    else if (route.type === 'day') renderDayPage(view, route.key)
     else if (route.type === 'vocab') renderVocabBook(view)
     else renderYear(view)
   }
@@ -2054,6 +2140,9 @@
       if (idx >= 0 && idx < monthList.length) location.hash = `#/${monthList[idx]}`
     } else if (route.type === 'week') {
       location.hash = `#/week/${shiftDate(route.key, dir * 7)}`
+    } else if (route.type === 'day') {
+      const target = shiftDate(route.key, dir)
+      if (dateInRange(target)) location.hash = `#/day/${target}`
     }
   }
 
