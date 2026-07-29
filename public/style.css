@@ -541,6 +541,7 @@ button, input, textarea { font-family: inherit; }
 .month-tag-input:focus { outline: none; }
 
 /* ====== 打卡卡片 ====== */
+.cards-label { margin-top: 1.6rem; margin-bottom: .5rem; }
 .cards-box {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));

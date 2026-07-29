@@ -948,33 +948,6 @@
     }
     box.append(heading)
 
-    if (settings().stamps) {
-      const stampRow = document.createElement('div')
-      stampRow.className = 'day-stamp-row'
-      const ym = date.slice(0, 7)
-      const dayNum = d
-      stampDefs().forEach((def) => {
-        const planned = (monthCards(ym)[def.id] || []).includes(dayNum)
-        const earned = (dayData(date).stamps || []).includes(def.id)
-        const btn = document.createElement('button')
-        btn.type = 'button'
-        btn.className = 'day-stamp-btn' + (earned ? ' is-on' : '') + (planned && !earned ? ' is-due' : '')
-        btn.textContent = `${def.emoji} ${def.name}${planned && !earned ? '(今日目標)' : ''}`
-        btn.addEventListener('click', () => {
-          const current = dayData(date).stamps || []
-          const next = current.includes(def.id)
-            ? current.filter((id) => id !== def.id)
-            : [...current, def.id]
-          btn.classList.toggle('is-on', next.includes(def.id))
-          btn.classList.toggle('is-due', planned && !next.includes(def.id))
-          btn.textContent = `${def.emoji} ${def.name}${planned && !next.includes(def.id) ? '(今日目標)' : ''}`
-          saveDay(date, { stamps: next })
-        })
-        stampRow.append(btn)
-      })
-      box.append(stampRow)
-    }
-
     const tabs = document.createElement('div')
     tabs.className = 'day-tabs'
     const schedBtn = document.createElement('button')
@@ -1400,14 +1373,6 @@
     renderPlanSection(planBox, ym)
     view.append(planBox)
 
-    if (settings().stamps) {
-      const cardsBox = document.createElement('div')
-      cardsBox.className = 'cards-box'
-      cardsBox.id = 'cardsBox'
-      renderCardsInto(cardsBox, ym)
-      view.append(cardsBox)
-    }
-
     const calWrap = document.createElement('div')
     const head = document.createElement('div')
     head.className = 'cal-head'
@@ -1441,6 +1406,23 @@
 
     calWrap.append(grid)
     view.append(calWrap)
+
+    if (settings().stamps) {
+      const cardsLabel = document.createElement('p')
+      cardsLabel.className = 'plan-label cards-label'
+      cardsLabel.textContent = '打卡卡片'
+      const cardsEn = document.createElement('span')
+      cardsEn.textContent = 'PUNCH CARDS'
+      cardsLabel.append(cardsEn)
+      view.append(cardsLabel)
+
+      const cardsBox = document.createElement('div')
+      cardsBox.className = 'cards-box'
+      cardsBox.id = 'cardsBox'
+      renderCardsInto(cardsBox, ym)
+      view.append(cardsBox)
+    }
+
     renderReview(view, ym)
   }
 
