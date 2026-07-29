@@ -922,6 +922,24 @@ button, input, textarea { font-family: inherit; }
 .day-cell:hover { border-color: var(--accent); }
 .day-cell.is-empty-slot { background: transparent; border: 0; cursor: default; }
 .day-cell.is-today { border: 2px solid var(--today); }
+.day-cell.is-past { opacity: .78; }
+.day-cell.is-past .day-num { color: var(--ink-soft); font-weight: 600; }
+.day-cell.is-missed { opacity: .55; }
+.day-cell.is-missed::before,
+.day-cell.is-missed::after {
+  content: '';
+  position: absolute;
+  left: 22%;
+  right: 22%;
+  top: 50%;
+  height: 2px;
+  background: #a39a8c;
+  border-radius: 2px;
+  opacity: .65;
+  pointer-events: none;
+}
+.day-cell.is-missed::before { transform: rotate(27deg) translateY(-1px); }
+.day-cell.is-missed::after { transform: rotate(-31deg) translateY(1px); }
 .day-cell.is-today .day-num { color: var(--today); font-weight: 900; }
 .day-cell.is-selected { border-color: var(--accent); background: var(--accent-soft); }
 .day-num { font-size: .78rem; font-weight: 700; }

@@ -755,6 +755,10 @@
     cell.className = 'day-cell'
     cell.dataset.date = date
     if (date === todayStr()) cell.classList.add('is-today')
+    else if (date < todayStr()) {
+      cell.classList.add('is-past')
+      if (!hasEntry(date)) cell.classList.add('is-missed')
+    }
     const cellMonday = mondayOf(date)
     if (cellMonday.slice(0, 7) === ym) {
       const wkIdx = mondaysOfMonth(ym).indexOf(cellMonday)
