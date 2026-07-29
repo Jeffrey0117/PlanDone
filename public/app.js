@@ -48,6 +48,9 @@
   const settings = () => ({ ...DEFAULT_SETTINGS, ...((state.meta && state.meta.settings) || {}) })
   const stampDefs = () => (state.meta && state.meta.stampDefs) || DEFAULT_STAMPS
   const dayData = (date) => state.days[date] || {}
+  const FACE_KEY = 'plandone-cal-face'
+  let calFace = localStorage.getItem(FACE_KEY) || 'sched'
+  const isTouch = () => window.matchMedia('(hover: none)').matches
   const isCjkDominant = (s) => {
     const cjk = (s.match(/[一-鿿]/g) || []).length
     return cjk > 0 && cjk >= s.replace(/\s/g, '').length / 2
@@ -783,20 +786,36 @@
 
     const note = (data.note || '').trim()
     const sched = schedItems(date)
-    if (note || sched.length > 0) {
-      const dot = document.createElement('span')
-      dot.className = 'day-dot'
-      const preview = document.createElement('div')
-      preview.className = 'day-preview'
-      if (sched.length > 0) {
-        preview.classList.add('is-sched')
-        const first = sched[0]
-        preview.textContent = `${first.start ? first.start + ' ' : ''}${first.text}`
-          + (sched.length > 1 ? ` +${sched.length - 1}` : '')
-      } else {
-        preview.textContent = note
+    if (calFace === 'sched') {
+      if (note || sched.length > 0) {
+        const dot = document.createElement('span')
+        dot.className = 'day-dot'
+        const preview = document.createElement('div')
+        preview.className = 'day-preview'
+        if (sched.length > 0) {
+          preview.classList.add('is-sched')
+          const first = sched[0]
+          preview.textContent = `${first.start ? first.start + ' ' : ''}${first.text}`
+            + (sched.length > 1 ? ` +${sched.length - 1}` : '')
+        } else {
+          preview.textContent = note
+        }
+        cell.append(dot, preview)
       }
-      cell.append(dot, preview)
+    } else {
+      if (sched.length > 0) {
+        const mark = document.createElement('span')
+        mark.className = 'day-sched-mark'
+        mark.textContent = '🕐'
+        mark.title = `這天有 ${sched.length} 筆行程`
+        top.append(mark)
+      }
+      if (note) {
+        const preview = document.createElement('div')
+        preview.className = 'day-preview'
+        preview.textContent = note
+        cell.append(preview)
+      }
     }
     return cell
   }
@@ -941,12 +960,47 @@
     if (!window.matchMedia('(max-width: 640px)').matches) area.focus()
   }
 
+  /* 右鍵選單(桌機) */
+  let ctxEl = null
+  const hideCtxMenu = () => { if (ctxEl) { ctxEl.remove(); ctxEl = null } }
+
+  const showCtxMenu = (x, y, date) => {
+    hideCtxMenu()
+    ctxEl = document.createElement('div')
+    ctxEl.className = 'ctx-menu'
+    const [, m, d] = date.split('-').map(Number)
+    const title = document.createElement('p')
+    title.textContent = `${m}/${d}`
+    ctxEl.append(title)
+    const items = [
+      { label: '📅 編輯行程', run: () => openDayModal(date, 'sched') },
+      { label: '✎ 編輯日記', run: () => openDayModal(date, 'note') },
+      { label: '🔤 單字本', run: () => { location.hash = '#/vocab' } }
+    ]
+    items.forEach((it) => {
+      const btn = document.createElement('button')
+      btn.type = 'button'
+      btn.textContent = it.label
+      btn.addEventListener('click', () => { hideCtxMenu(); it.run() })
+      ctxEl.append(btn)
+    })
+    document.body.append(ctxEl)
+    const rect = ctxEl.getBoundingClientRect()
+    ctxEl.style.left = `${Math.min(x, window.innerWidth - rect.width - 8)}px`
+    ctxEl.style.top = `${Math.min(y, window.innerHeight - rect.height - 8)}px`
+  }
+
+  document.addEventListener('click', hideCtxMenu)
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideCtxMenu() })
+  window.addEventListener('hashchange', hideCtxMenu)
+  window.addEventListener('scroll', hideCtxMenu, { passive: true })
+
   const closeDayModal = () => {
     document.getElementById('dayModal').hidden = true
     render()
   }
 
-  const openDayModal = (date) => {
+  const openDayModal = (date, forceTab) => {
     if (!dateInRange(date)) return
     const box = document.getElementById('dayModalBox')
     box.innerHTML = ''
@@ -992,7 +1046,7 @@
     box.append(tabs, content)
 
     refreshTabLabels()
-    const preferred = lastDayTab
+    const preferred = forceTab || lastDayTab
       || (schedItems(date).length > 0 || !(dayData(date).note || '').trim() ? 'sched' : 'note')
     setTab(preferred)
 
@@ -1476,6 +1530,25 @@
     }
 
     const calWrap = document.createElement('div')
+    calWrap.className = 'cal-wrap'
+
+    const faceRow = document.createElement('div')
+    faceRow.className = 'cal-face-row'
+    const faceToggle = document.createElement('div')
+    faceToggle.className = 'cal-face-toggle'
+    const schedFaceBtn = document.createElement('button')
+    schedFaceBtn.type = 'button'
+    schedFaceBtn.textContent = '📅 行程面'
+    const noteFaceBtn = document.createElement('button')
+    noteFaceBtn.type = 'button'
+    noteFaceBtn.textContent = '✎ 日記面'
+    faceToggle.append(schedFaceBtn, noteFaceBtn)
+    const hint = document.createElement('span')
+    hint.className = 'cal-hint'
+    hint.textContent = '點日曆翻面 ・ 右鍵編輯'
+    faceRow.append(faceToggle, hint)
+    calWrap.append(faceRow)
+
     const head = document.createElement('div')
     head.className = 'cal-head'
     WEEKDAYS.forEach((w) => {
@@ -1491,35 +1564,80 @@
     const daysInMonth = new Date(y, m, 0).getDate()
     const offset = (new Date(y, m - 1, 1).getDay() + 6) % 7
 
-    Array.from({ length: offset }).forEach(() => {
-      const empty = document.createElement('div')
-      empty.className = 'day-cell is-empty-slot'
-      grid.append(empty)
-    })
-    Array.from({ length: daysInMonth }, (_, i) => i + 1).forEach((day) => {
-      grid.append(buildDayCell(ym, day))
-    })
-
-    const trailing = (7 - ((offset + daysInMonth) % 7)) % 7
-    const wmSpot = offset >= 2 ? 'lead' : (trailing >= 2 ? 'tail' : null)
-    if (wmSpot) {
-      const wm = document.createElement('div')
-      wm.className = `cal-wm is-${wmSpot}`
-      const slots = wmSpot === 'lead' ? offset : trailing
-      wm.style.width = `${(slots / 7) * 100}%`
-      wm.textContent = String(m)
-      const unit = document.createElement('small')
-      unit.textContent = '月'
-      wm.append(unit)
-      grid.append(wm)
+    const fillCalGrid = () => {
+      grid.innerHTML = ''
+      Array.from({ length: offset }).forEach(() => {
+        const empty = document.createElement('div')
+        empty.className = 'day-cell is-empty-slot'
+        grid.append(empty)
+      })
+      Array.from({ length: daysInMonth }, (_, i) => i + 1).forEach((day) => {
+        grid.append(buildDayCell(ym, day))
+      })
+      const trailing = (7 - ((offset + daysInMonth) % 7)) % 7
+      const wmSpot = offset >= 2 ? 'lead' : (trailing >= 2 ? 'tail' : null)
+      if (wmSpot) {
+        const wm = document.createElement('div')
+        wm.className = `cal-wm is-${wmSpot}`
+        const slots = wmSpot === 'lead' ? offset : trailing
+        wm.style.width = `${(slots / 7) * 100}%`
+        wm.textContent = String(m)
+        const unit = document.createElement('small')
+        unit.textContent = '月'
+        wm.append(unit)
+        grid.append(wm)
+      }
     }
+
+    const syncFaceBtns = () => {
+      schedFaceBtn.classList.toggle('is-active', calFace === 'sched')
+      noteFaceBtn.classList.toggle('is-active', calFace === 'note')
+    }
+
+    let flipping = false
+    const flipFace = () => {
+      if (flipping) return
+      flipping = true
+      calFace = calFace === 'sched' ? 'note' : 'sched'
+      localStorage.setItem(FACE_KEY, calFace)
+      syncFaceBtns()
+      grid.style.transition = 'transform .15s ease-in'
+      grid.style.transform = 'rotateY(90deg)'
+      setTimeout(() => {
+        fillCalGrid()
+        grid.style.transition = 'none'
+        grid.style.transform = 'rotateY(-90deg)'
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            grid.style.transition = 'transform .15s ease-out'
+            grid.style.transform = 'rotateY(0deg)'
+            setTimeout(() => { flipping = false }, 170)
+          })
+        })
+      }, 150)
+    }
+
+    schedFaceBtn.addEventListener('click', () => { if (calFace !== 'sched') flipFace() })
+    noteFaceBtn.addEventListener('click', () => { if (calFace !== 'note') flipFace() })
 
     grid.addEventListener('click', (e) => {
       const cell = e.target.closest('.day-cell')
+      if (isTouch()) {
+        if (cell && cell.dataset.date) openDayModal(cell.dataset.date)
+      } else {
+        flipFace()
+      }
+    })
+    grid.addEventListener('contextmenu', (e) => {
+      if (isTouch()) return
+      const cell = e.target.closest('.day-cell')
       if (!cell || !cell.dataset.date) return
-      openDayModal(cell.dataset.date)
+      e.preventDefault()
+      showCtxMenu(e.clientX, e.clientY, cell.dataset.date)
     })
 
+    fillCalGrid()
+    syncFaceBtns()
     calWrap.append(grid)
     view.append(calWrap)
 

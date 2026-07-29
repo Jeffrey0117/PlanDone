@@ -822,7 +822,68 @@ button, input, textarea { font-family: inherit; }
 }
 
 .cal-head, .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: .35rem; }
-.cal-grid { position: relative; }
+.cal-wrap { perspective: 1400px; }
+.cal-grid { position: relative; transform-style: preserve-3d; }
+.cal-face-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: .5rem;
+}
+.cal-face-toggle { display: flex; gap: .3rem; }
+.cal-face-toggle button {
+  border: 1px solid var(--paper-line);
+  background: none;
+  border-radius: 999px;
+  font-size: .78rem;
+  font-weight: 700;
+  padding: .25em .9em;
+  cursor: pointer;
+  color: var(--ink-soft);
+}
+.cal-face-toggle button.is-active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+.cal-hint {
+  font-size: .7rem;
+  color: var(--ink-soft);
+  letter-spacing: .08em;
+  opacity: .75;
+}
+@media (hover: none) { .cal-hint { display: none; } }
+.day-sched-mark { font-size: .58rem; }
+.ctx-menu {
+  position: fixed;
+  z-index: 120;
+  background: #fff;
+  border: 1px solid var(--paper-line);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(40, 30, 20, .18);
+  padding: .35rem;
+  min-width: 10em;
+}
+.ctx-menu p {
+  font-size: .68rem;
+  font-weight: 800;
+  color: var(--ink-soft);
+  padding: .2rem .6rem .3rem;
+  letter-spacing: .1em;
+}
+.ctx-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: none;
+  font-size: .88rem;
+  padding: .42rem .6rem;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--ink);
+}
+.ctx-menu button:hover { background: var(--accent-soft); color: var(--accent); }
 .cal-wm {
   position: absolute;
   display: flex;
