@@ -1500,6 +1500,20 @@
       grid.append(buildDayCell(ym, day))
     })
 
+    const trailing = (7 - ((offset + daysInMonth) % 7)) % 7
+    const wmSpot = offset >= 2 ? 'lead' : (trailing >= 2 ? 'tail' : null)
+    if (wmSpot) {
+      const wm = document.createElement('div')
+      wm.className = `cal-wm is-${wmSpot}`
+      const slots = wmSpot === 'lead' ? offset : trailing
+      wm.style.width = `${(slots / 7) * 100}%`
+      wm.textContent = String(m)
+      const unit = document.createElement('small')
+      unit.textContent = '月'
+      wm.append(unit)
+      grid.append(wm)
+    }
+
     grid.addEventListener('click', (e) => {
       const cell = e.target.closest('.day-cell')
       if (!cell || !cell.dataset.date) return

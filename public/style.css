@@ -822,6 +822,24 @@ button, input, textarea { font-family: inherit; }
 }
 
 .cal-head, .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: .35rem; }
+.cal-grid { position: relative; }
+.cal-wm {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  font-family: var(--serif);
+  font-weight: 800;
+  font-size: clamp(3.2rem, 9vw, 6rem);
+  line-height: 1;
+  color: var(--accent);
+  opacity: .16;
+  user-select: none;
+}
+.cal-wm small { font-size: .32em; font-weight: 600; margin-top: .9em; }
+.cal-wm.is-lead { left: 0; top: 0; height: 96px; }
+.cal-wm.is-tail { right: 0; bottom: 0; height: 96px; }
 .cal-head { margin-bottom: .35rem; }
 .cal-head span {
   text-align: center;
