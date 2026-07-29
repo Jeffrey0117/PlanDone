@@ -175,6 +175,8 @@ app.use((error, req, res, next) => {
   res.status(500).json({ success: false, error: '伺服器錯誤' })
 })
 
+require('./src/backup').start()
+
 app.listen(PORT, () => {
   console.error(`PlanDone 啟動於 http://localhost:${PORT}`)
 })
