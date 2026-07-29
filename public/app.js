@@ -106,9 +106,36 @@
     })
     .join('\n')
   const vocabCount = (date) => parseVocab(dayData(date).vocab).length
+
+  /* 行程項: "15:00 事項" 或 "09:00-12:00 事項",一行一項 */
+  const parseSched = (text) => (text || '').split('\n')
+    .map((l) => l.trim()).filter(Boolean)
+    .map((line) => {
+      const m = line.match(/^(\d{1,2}):(\d{2})(?:\s*[-~–]\s*(\d{1,2}):(\d{2}))?\s+(.*)$/)
+      if (!m) return { start: '', end: '', text: line, startMin: 1440, endMin: null }
+      const sh = Number(m[1])
+      const sm = Number(m[2])
+      return {
+        start: `${pad(sh)}:${pad(sm)}`,
+        end: m[3] ? `${pad(Number(m[3]))}:${pad(Number(m[4]))}` : '',
+        text: m[5],
+        startMin: sh * 60 + sm,
+        endMin: m[3] ? Number(m[3]) * 60 + Number(m[4]) : null
+      }
+    })
+    .sort((a, b) => a.startMin - b.startMin)
+
+  const serializeSched = (items) => items
+    .filter((i) => (i.text || '').trim() || i.start)
+    .map((i) => (i.start ? `${i.start}${i.end ? '-' + i.end : ''} ${i.text.trim()}` : i.text.trim()))
+    .join('\n')
+
+  const schedItems = (date) => parseSched(dayData(date).sched)
+
   const hasEntry = (date) => {
     const d = dayData(date)
-    return Boolean((d.note && d.note.trim()) || (d.stamps && d.stamps.length) || vocabCount(date) > 0)
+    return Boolean((d.note && d.note.trim()) || (d.stamps && d.stamps.length) ||
+      vocabCount(date) > 0 || (d.sched && d.sched.trim()))
   }
 
   /* ---- API ---- */
@@ -721,12 +748,20 @@
     cell.append(top)
 
     const note = (data.note || '').trim()
-    if (note) {
+    const sched = schedItems(date)
+    if (note || sched.length > 0) {
       const dot = document.createElement('span')
       dot.className = 'day-dot'
       const preview = document.createElement('div')
       preview.className = 'day-preview'
-      preview.textContent = note
+      if (sched.length > 0) {
+        preview.classList.add('is-sched')
+        const first = sched[0]
+        preview.textContent = `${first.start ? first.start + ' ' : ''}${first.text}`
+          + (sched.length > 1 ? ` +${sched.length - 1}` : '')
+      } else {
+        preview.textContent = note
+      }
       cell.append(dot, preview)
     }
     return cell
@@ -742,6 +777,138 @@
   /* ---- 日編輯彈窗 ---- */
   const WEEKDAY_NAMES = ['週日', '週一', '週二', '週三', '週四', '週五', '週六']
   const dateInRange = (date) => monthList.includes(date.slice(0, 7))
+  let lastDayTab = null
+
+  /* 行程模式:24h 軸 + 時間列 */
+  const renderSchedTab = (container, date, onChanged) => {
+    container.innerHTML = ''
+    const items = schedItems(date)
+    const save = (next) =>
+      saveDay(date, { sched: serializeSched(next) }).then(() => {
+        onChanged()
+        renderSchedTab(container, date, onChanged)
+      })
+
+    const strip = document.createElement('div')
+    strip.className = 'sched-strip'
+    ;[0, 6, 12, 18, 24].forEach((h) => {
+      const tick = document.createElement('span')
+      tick.className = 'ss-tick'
+      tick.style.left = `${(h / 24) * 100}%`
+      tick.textContent = h
+      strip.append(tick)
+    })
+    items.filter((i) => i.startMin < 1440).forEach((i) => {
+      const block = document.createElement('span')
+      block.className = 'ss-block'
+      const dur = i.endMin && i.endMin > i.startMin ? i.endMin - i.startMin : 45
+      block.style.left = `${(i.startMin / 1440) * 100}%`
+      block.style.width = `${Math.min((dur / 1440) * 100, 100 - (i.startMin / 1440) * 100)}%`
+      block.title = `${i.start}${i.end ? '-' + i.end : ''} ${i.text}`
+      strip.append(block)
+    })
+    container.append(strip)
+
+    const list = document.createElement('div')
+    list.className = 'sched-list'
+    items.forEach((item, idx) => {
+      const row = document.createElement('div')
+      row.className = 'sched-row'
+
+      const startEdit = () => {
+        if (row.classList.contains('is-editing')) return
+        row.classList.add('is-editing')
+        row.innerHTML = ''
+        const sIn = document.createElement('input')
+        sIn.type = 'time'
+        sIn.value = item.start
+        const eIn = document.createElement('input')
+        eIn.type = 'time'
+        eIn.value = item.end
+        const tIn = document.createElement('input')
+        tIn.className = 'sched-text-in'
+        tIn.value = item.text
+        const commit = () => {
+          const next = items.map((x, i) => (i === idx
+            ? { ...x, start: sIn.value, end: eIn.value, text: tIn.value }
+            : x))
+          save(next.filter((x) => x.text.trim() || x.start))
+        }
+        let blurTimer = null
+        ;[sIn, eIn, tIn].forEach((input) => {
+          input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur() })
+          input.addEventListener('blur', () => { blurTimer = setTimeout(commit, 120) })
+          input.addEventListener('focus', () => clearTimeout(blurTimer))
+        })
+        row.append(sIn, eIn, tIn)
+        tIn.focus()
+      }
+
+      const time = document.createElement('span')
+      time.className = 'sched-time'
+      time.textContent = item.start ? `${item.start}${item.end ? '–' + item.end : ''}` : '—'
+      const text = document.createElement('span')
+      text.className = 'sched-text'
+      text.textContent = item.text
+      const del = document.createElement('button')
+      del.type = 'button'
+      del.className = 'v-del'
+      del.textContent = '×'
+      del.addEventListener('click', (e) => {
+        e.stopPropagation()
+        save(items.filter((_, i) => i !== idx))
+      })
+      row.append(time, text, del)
+      row.addEventListener('click', (e) => { if (e.target !== del) startEdit() })
+      list.append(row)
+    })
+    container.append(list)
+
+    const add = document.createElement('div')
+    add.className = 'sched-add'
+    const aStart = document.createElement('input')
+    aStart.type = 'time'
+    const aEnd = document.createElement('input')
+    aEnd.type = 'time'
+    aEnd.title = '結束時間(可不填)'
+    const aText = document.createElement('input')
+    aText.className = 'sched-text-in'
+    aText.placeholder = '行程…'
+    const aBtn = document.createElement('button')
+    aBtn.type = 'button'
+    aBtn.textContent = '＋'
+    const doAdd = () => {
+      if (!aText.value.trim() && !aStart.value) return
+      const sm = aStart.value
+        ? Number(aStart.value.slice(0, 2)) * 60 + Number(aStart.value.slice(3))
+        : 1440
+      save([...items, {
+        start: aStart.value, end: aEnd.value, text: aText.value, startMin: sm, endMin: null
+      }])
+    }
+    aBtn.addEventListener('click', doAdd)
+    aText.addEventListener('keydown', (e) => { if (e.key === 'Enter') doAdd() })
+    add.append(aStart, aEnd, aText, aBtn)
+    container.append(add)
+  }
+
+  /* 日記模式 */
+  const renderNoteTab = (container, date, onChanged) => {
+    container.innerHTML = ''
+    const area = document.createElement('textarea')
+    area.className = 'day-modal-area'
+    area.placeholder = '這天發生了什麼、想到什麼…'
+    area.value = dayData(date).note || ''
+    const commit = () => {
+      const val = area.value
+      const prev = dayData(date).note || ''
+      if (val !== prev) saveDay(date, { note: val }).then(onChanged)
+    }
+    area.addEventListener('input', debounce(commit, 1500))
+    area.addEventListener('blur', commit)
+    container.append(area)
+    if (!window.matchMedia('(max-width: 640px)').matches) area.focus()
+  }
 
   const closeDayModal = () => {
     document.getElementById('dayModal').hidden = true
@@ -793,18 +960,37 @@
       box.append(stampRow)
     }
 
-    const area = document.createElement('textarea')
-    area.className = 'day-modal-area'
-    area.placeholder = '這天發生了什麼、要做什麼…'
-    area.value = dayData(date).note || ''
-    const commit = () => {
-      const val = area.value
-      const prev = dayData(date).note || ''
-      if (val !== prev) saveDay(date, { note: val })
+    const tabs = document.createElement('div')
+    tabs.className = 'day-tabs'
+    const schedBtn = document.createElement('button')
+    schedBtn.type = 'button'
+    const noteBtn = document.createElement('button')
+    noteBtn.type = 'button'
+    const content = document.createElement('div')
+    content.className = 'day-tab-content'
+
+    const refreshTabLabels = () => {
+      const sc = schedItems(date).length
+      schedBtn.textContent = sc > 0 ? `📅 行程 ${sc}` : '📅 行程'
+      noteBtn.textContent = (dayData(date).note || '').trim() ? '✎ 日記 ●' : '✎ 日記'
     }
-    area.addEventListener('input', debounce(commit, 1500))
-    area.addEventListener('blur', commit)
-    box.append(area)
+
+    const setTab = (tab) => {
+      lastDayTab = tab
+      schedBtn.classList.toggle('is-active', tab === 'sched')
+      noteBtn.classList.toggle('is-active', tab === 'note')
+      if (tab === 'sched') renderSchedTab(content, date, refreshTabLabels)
+      else renderNoteTab(content, date, refreshTabLabels)
+    }
+    schedBtn.addEventListener('click', () => setTab('sched'))
+    noteBtn.addEventListener('click', () => setTab('note'))
+    tabs.append(schedBtn, noteBtn)
+    box.append(tabs, content)
+
+    refreshTabLabels()
+    const preferred = lastDayTab
+      || (schedItems(date).length > 0 || !(dayData(date).note || '').trim() ? 'sched' : 'note')
+    setTab(preferred)
 
     const vocabLink = document.createElement('a')
     vocabLink.className = 'vocab-link'
@@ -821,7 +1007,6 @@
     box.append(close)
 
     document.getElementById('dayModal').hidden = false
-    if (!window.matchMedia('(max-width: 640px)').matches) area.focus()
   }
 
   /* ---- 單字本 ---- */
@@ -1150,8 +1335,13 @@
       const noteEl = document.createElement('div')
       noteEl.className = 'wr-note'
       const note = (dayData(date).note || '').trim()
-      noteEl.textContent = inRange ? (note || '—') : '(規劃本範圍外)'
-      if (!note) noteEl.classList.add('is-empty')
+      const sched = inRange ? schedItems(date) : []
+      const lines = [
+        ...sched.map((i) => `${i.start ? i.start + ' ' : ''}${i.text}`),
+        ...(note ? [note] : [])
+      ]
+      noteEl.textContent = inRange ? (lines.join('\n') || '—') : '(規劃本範圍外)'
+      if (lines.length === 0) noteEl.classList.add('is-empty')
 
       row.append(left, stampsEl, noteEl)
       if (inRange) row.addEventListener('click', () => openDayModal(date))

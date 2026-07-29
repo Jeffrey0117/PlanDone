@@ -786,13 +786,119 @@ button, input, textarea { font-family: inherit; }
   font-size: .88rem;
   overflow: hidden;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
+  white-space: pre-line;
 }
 .wr-note.is-empty { color: var(--ink-soft); }
 
 /* ====== 日編輯彈窗 ====== */
 .day-modal-box h2 { font-size: 1.1rem; display: flex; align-items: center; }
+.day-tabs {
+  display: flex;
+  gap: .3rem;
+  margin: .8rem 0 .7rem;
+  border-bottom: 1.5px solid var(--paper-line);
+  padding-bottom: .5rem;
+}
+.day-tabs button {
+  border: 1px solid var(--paper-line);
+  background: none;
+  border-radius: 999px;
+  font-size: .82rem;
+  font-weight: 700;
+  padding: .3em .95em;
+  cursor: pointer;
+  color: var(--ink-soft);
+}
+.day-tabs button.is-active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+.sched-strip {
+  position: relative;
+  height: 26px;
+  background: #f4efe3;
+  border: 1px solid var(--paper-line);
+  border-radius: 6px;
+  margin-bottom: .7rem;
+}
+.ss-tick {
+  position: absolute;
+  top: 100%;
+  transform: translateX(-50%);
+  font-size: .58rem;
+  color: var(--ink-soft);
+  padding-top: 1px;
+}
+.ss-block {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  background: var(--accent);
+  border-radius: 4px;
+  min-width: 4px;
+  opacity: .85;
+}
+.sched-list { display: grid; gap: .3rem; margin: .9rem 0 .5rem; }
+.sched-row {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  background: #fff;
+  border: 1px solid var(--paper-line);
+  border-radius: 8px;
+  padding: .4rem .7rem;
+  cursor: pointer;
+}
+.sched-row:hover { border-color: var(--accent); }
+.sched-row.is-editing { border-color: var(--accent); cursor: default; flex-wrap: wrap; }
+.sched-time {
+  font-size: .78rem;
+  font-weight: 800;
+  color: var(--accent);
+  min-width: 5.2em;
+  letter-spacing: .02em;
+}
+.sched-text { flex: 1; font-size: .9rem; }
+.sched-add {
+  display: flex;
+  gap: .35rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.sched-add input[type="time"], .sched-row input[type="time"] {
+  border: 1px solid var(--paper-line);
+  border-radius: 6px;
+  padding: .28rem .4rem;
+  font-size: .85rem;
+  background: #fffdf5;
+  width: 6.2em;
+}
+.sched-text-in {
+  flex: 1;
+  border: 1px solid var(--paper-line);
+  border-radius: 6px;
+  padding: .32rem .6rem;
+  font-size: .9rem;
+  background: #fffdf5;
+  min-width: 8em;
+}
+.sched-add input:focus, .sched-row input:focus { outline: none; border-color: var(--accent); }
+.sched-add button {
+  border: 0;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  width: 2em;
+  height: 2em;
+  cursor: pointer;
+  line-height: 1;
+}
+.day-preview.is-sched { color: var(--accent); font-weight: 700; }
 .day-modal-box .day-stamp-row { margin: .7rem 0; }
 .day-stamp-btn.is-due { border-style: dashed; border-color: var(--accent); color: var(--accent); }
 .day-modal-area {
