@@ -81,18 +81,21 @@ button, input, textarea { font-family: inherit; }
   text-decoration: none;
   letter-spacing: .04em;
 }
-.topbar-left { display: flex; align-items: center; gap: 1rem; }
-.view-nav { display: flex; gap: .2rem; }
-.view-nav a {
-  font-size: .8rem;
-  font-weight: 700;
-  color: var(--ink-soft);
-  text-decoration: none;
-  padding: .15em .7em;
-  border-radius: 999px;
+.topbar-left { display: flex; align-items: center; gap: .5rem; min-width: 0; }
+.crumbs {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+  overflow: hidden;
+  white-space: nowrap;
 }
-.view-nav a:hover { color: var(--accent); }
-.view-nav a.is-active { background: var(--ink); color: #fff; }
+.crumb-sep { color: var(--ink-soft); opacity: .6; }
+.crumbs a { color: var(--accent); text-decoration: none; font-weight: 700; }
+.crumbs a:hover { text-decoration: underline; }
+.crumbs b { font-weight: 800; color: var(--ink); }
+.chip-link { text-decoration: none; color: var(--ink-soft); }
+.chip-link:hover { color: var(--accent); border-color: var(--accent); }
 .topbar-right { display: flex; align-items: center; gap: .5rem; }
 .chip {
   font-size: .74rem;
@@ -300,8 +303,35 @@ button, input, textarea { font-family: inherit; }
   font-weight: 700;
 }
 
-/* ====== 版面 ====== */
-.view { max-width: 1080px; margin: 0 auto; padding: 1.2rem; }
+/* ====== 版面:書頁 ====== */
+.view {
+  max-width: 1080px;
+  margin: 1rem auto 2rem;
+  padding: 1.6rem 1.8rem 2rem;
+  background: #fffdf8;
+  border: 1px solid var(--paper-line);
+  border-radius: 14px;
+  box-shadow:
+    3px 3px 0 #f1ece0,
+    5px 5px 0 #eae4d4,
+    8px 10px 24px rgba(60, 50, 35, .08);
+}
+
+@keyframes page-fade-kf {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes page-flip-fwd-kf {
+  from { opacity: 0; transform: translateX(36px) rotate(.3deg); }
+  to { opacity: 1; transform: translateX(0) rotate(0); }
+}
+@keyframes page-flip-back-kf {
+  from { opacity: 0; transform: translateX(-36px) rotate(-.3deg); }
+  to { opacity: 1; transform: translateX(0) rotate(0); }
+}
+.page-fade { animation: page-fade-kf .18s ease; }
+.page-flip-fwd { animation: page-flip-fwd-kf .22s ease; }
+.page-flip-back { animation: page-flip-back-kf .22s ease; }
 
 /* ====== 年視圖 ====== */
 .year-grid {
@@ -539,6 +569,83 @@ button, input, textarea { font-family: inherit; }
   background: #fff;
 }
 .month-tag-input:focus { outline: none; }
+
+/* ====== 本月的週 ====== */
+.weeks-strip {
+  display: flex;
+  gap: .45rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.2rem;
+}
+.week-chip {
+  border: 1px solid var(--paper-line);
+  border-radius: 999px;
+  background: #fff;
+  padding: .28em .95em;
+  font-size: .78rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+  text-decoration: none;
+}
+.week-chip b { color: var(--accent); font-weight: 800; }
+.week-chip:hover { border-color: var(--accent); color: var(--accent); }
+.week-chip.is-current { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+
+/* ====== 週頁:月計畫面板 ====== */
+.wm-panel {
+  background: #fff;
+  border: 1px solid var(--paper-line);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  padding: .55rem .9rem;
+  margin-bottom: 1.1rem;
+}
+.wm-row {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  padding: .22rem 0;
+  font-size: .9rem;
+}
+.wm-row input { accent-color: var(--accent); }
+.wm-row.is-done span { color: var(--ink-soft); text-decoration: line-through; }
+.wm-row span { flex: 1; }
+.wm-pull {
+  border: 1px solid var(--paper-line);
+  border-radius: 999px;
+  background: none;
+  font-size: .7rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+  padding: .15em .7em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.wm-pull:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.wm-pull:disabled { opacity: .55; cursor: default; color: var(--accent); border-color: var(--accent-soft); }
+.wm-empty {
+  font-size: .85rem;
+  color: var(--ink-soft);
+  text-decoration: none;
+  display: block;
+  padding: .3rem 0;
+}
+.wm-empty:hover { color: var(--accent); }
+
+/* ====== 年卡進度條 ====== */
+.card-bar {
+  height: 5px;
+  background: #efe9db;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: .2rem;
+}
+.card-bar i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+}
 
 /* ====== 打卡卡片 ====== */
 .cards-label { margin-top: 1.6rem; margin-bottom: .5rem; }
@@ -1113,8 +1220,17 @@ button, input, textarea { font-family: inherit; }
   /* iOS 點輸入框自動縮放的元凶是 <16px 字級 */
   input, textarea { font-size: 16px !important; }
 
+  /* 書頁 */
+  .view {
+    margin: .5rem .45rem 1.2rem;
+    padding: 1rem .8rem 1.4rem;
+    border-radius: 10px;
+    box-shadow: 2px 2px 0 #f1ece0, 4px 4px 0 #eae4d4;
+  }
+  .crumbs { font-size: .78rem; }
+
   /* 頂欄瘦身 */
-  .topbar { padding: .6rem .7rem; }
+  .topbar { padding: .6rem .7rem; flex-wrap: wrap; row-gap: .3rem; }
   .topbar-left { gap: .5rem; }
   .logo { font-size: .95rem; }
   .view-nav { gap: 0; }

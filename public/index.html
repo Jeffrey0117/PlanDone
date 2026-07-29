@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=17">
+  <link rel="stylesheet" href="style.css?v=18">
 </head>
 <body>
 
@@ -26,13 +26,11 @@
   <header class="topbar">
     <div class="topbar-left">
       <a class="logo" href="#/">✓ PlanDone</a>
-      <nav class="view-nav">
-        <a href="#/" id="navYear">年</a>
-        <a href="#/week" id="navWeek">週</a>
-        <a href="#/vocab" id="navVocab">單字</a>
-      </nav>
+      <nav class="crumbs" id="crumbs"></nav>
     </div>
     <div class="topbar-right">
+      <a class="chip chip-link" href="#/week">本週</a>
+      <a class="chip chip-link" href="#/vocab">單字</a>
       <span class="chip chip-streak" id="streakChip" hidden></span>
       <span class="chip" id="todayLeft" hidden></span>
       <button class="gear" id="settingsBtn" aria-label="設定" title="設定">⚙</button>
@@ -83,6 +81,6 @@
 
   <p class="savebar" id="saveBar" hidden>已儲存 ✓</p>
 
-  <script src="app.js?v=17"></script>
+  <script src="app.js?v=18"></script>
 </body>
 </html>

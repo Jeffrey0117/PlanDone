@@ -391,16 +391,27 @@
       preview.className = 'month-card-preview' + (plan ? '' : ' is-empty')
       preview.textContent = plan ? plan.replace(/^-\s*\[[ xX]\]\s*/gm, '· ') : '尚未規劃'
 
+      const stats = taskStats(month.plan)
+      let bar = null
+      if (stats.total > 0) {
+        bar = document.createElement('div')
+        bar.className = 'card-bar'
+        const fill = document.createElement('i')
+        fill.style.width = `${Math.round((stats.done / stats.total) * 100)}%`
+        bar.append(fill)
+      }
+
       const foot = document.createElement('div')
       foot.className = 'month-card-days'
-      const stats = taskStats(month.plan)
       const parts = []
       if (stats.total > 0) parts.push(`☑ ${stats.done}/${stats.total}`)
       const dayCount = Object.keys(state.days).filter((d) => d.startsWith(ym) && hasEntry(d)).length
       if (dayCount > 0) parts.push(`日記 ${dayCount} 天`)
       foot.textContent = parts.join(' ・ ')
 
-      card.append(head, sub, preview, foot)
+      card.append(head, sub, preview)
+      if (bar) card.append(bar)
+      card.append(foot)
       grid.append(card)
     })
     view.append(grid)
@@ -1248,6 +1259,69 @@
     nav.append(prev, title, next)
     view.append(nav)
 
+    const ownerYm = monday.slice(0, 7)
+    if (monthList.includes(ownerYm)) {
+      const panelLabel = document.createElement('p')
+      panelLabel.className = 'plan-label'
+      panelLabel.textContent = `${Number(ownerYm.split('-')[1])} 月計畫`
+      const panelEn = document.createElement('span')
+      panelEn.textContent = 'PICK FROM THE MONTH ↓'
+      panelLabel.append(panelEn)
+      view.append(panelLabel)
+
+      const panel = document.createElement('div')
+      panel.className = 'wm-panel'
+      const items = parsePlan((state.months[ownerYm] && state.months[ownerYm].plan) || '')
+      const tasks = items.filter((it) => it.type === 'task')
+      if (tasks.length === 0) {
+        const link = document.createElement('a')
+        link.className = 'wm-empty'
+        link.href = `#/${ownerYm}`
+        link.textContent = `這個月還沒有計畫清單 — 去寫 ${Number(ownerYm.split('-')[1])} 月計畫 →`
+        panel.append(link)
+      } else {
+        items.forEach((it, idx) => {
+          if (it.type !== 'task') return
+          const row = document.createElement('div')
+          row.className = 'wm-row' + (it.done ? ' is-done' : '')
+          const cb = document.createElement('input')
+          cb.type = 'checkbox'
+          cb.checked = it.done
+          cb.addEventListener('change', () => {
+            const next = items.map((x, i) => (i === idx ? { ...x, done: cb.checked } : x))
+            row.classList.toggle('is-done', cb.checked)
+            saveMonth(ownerYm, { plan: serializePlan(next) })
+          })
+          const text = document.createElement('span')
+          text.textContent = it.text
+          const pull = document.createElement('button')
+          pull.type = 'button'
+          pull.className = 'wm-pull'
+          pull.textContent = '↓ 排入本週'
+          const goalsNow = () => (state.weeks[monday] && state.weeks[monday].goals) || ''
+          const already = () => goalsNow().includes(it.text)
+          if (already()) {
+            pull.disabled = true
+            pull.textContent = '✓ 已在本週'
+          }
+          pull.addEventListener('click', async () => {
+            if (already()) return
+            const nextGoals = (goalsNow().trim() ? goalsNow().trimEnd() + '\n' : '') + `- [ ] ${it.text}`
+            state = {
+              ...state,
+              weeks: { ...state.weeks, [monday]: { ...(state.weeks[monday] || {}), goals: nextGoals } }
+            }
+            await api(`/api/week/${monday}`, { method: 'PUT', body: JSON.stringify({ goals: nextGoals }) })
+            flashSaved()
+            render()
+          })
+          row.append(cb, text, pull)
+          panel.append(row)
+        })
+      }
+      view.append(panel)
+    }
+
     const goalLabel = document.createElement('p')
     goalLabel.className = 'plan-label'
     goalLabel.textContent = '週目標'
@@ -1372,6 +1446,26 @@
     planBox.className = 'plan-box'
     renderPlanSection(planBox, ym)
     view.append(planBox)
+
+    const mondays = mondaysOfMonth(ym)
+    if (mondays.length > 0) {
+      const strip = document.createElement('div')
+      strip.className = 'weeks-strip'
+      const currentMonday = mondayOf(todayStr())
+      mondays.forEach((monday, i) => {
+        const [, , d] = monday.split('-').map(Number)
+        const chip = document.createElement('a')
+        chip.className = 'week-chip' + (monday === currentMonday ? ' is-current' : '')
+        chip.href = `#/week/${monday}`
+        const stats = taskStats((state.weeks[monday] && state.weeks[monday].goals) || '')
+        chip.textContent = `W${i + 1} ・ ${Number(ym.split('-')[1])}/${d}`
+        const stat = document.createElement('b')
+        stat.textContent = stats.total > 0 ? ` ☑${stats.done}/${stats.total}` : ''
+        chip.append(stat)
+        strip.append(chip)
+      })
+      view.append(strip)
+    }
 
     const calWrap = document.createElement('div')
     const head = document.createElement('div')
@@ -1566,26 +1660,116 @@
   }
 
   /* ---- 路由 ---- */
-  const render = () => {
-    const view = document.getElementById('view')
-    view.innerHTML = ''
+  const mondaysOfMonth = (ym) => {
+    const [y, m] = ym.split('-').map(Number)
+    const total = new Date(y, m, 0).getDate()
+    return Array.from({ length: total }, (_, i) => i + 1)
+      .filter((d) => new Date(y, m - 1, d).getDay() === 1)
+      .map((d) => `${ym}-${pad(d)}`)
+  }
+
+  const parseRoute = () => {
     const hash = location.hash.replace(/^#\//, '')
-    const isWeek = hash === 'week' || hash.startsWith('week/')
-    const isVocab = hash === 'vocab'
-    document.getElementById('navYear').classList.toggle('is-active', !isWeek && !isVocab && !monthList.includes(hash))
-    document.getElementById('navWeek').classList.toggle('is-active', isWeek)
-    document.getElementById('navVocab').classList.toggle('is-active', isVocab)
-    if (monthList.includes(hash)) {
-      renderMonth(view, hash)
-    } else if (isWeek) {
+    if (monthList.includes(hash)) return { type: 'month', key: hash }
+    if (hash === 'week' || hash.startsWith('week/')) {
       const dateArg = hash.split('/')[1]
       const valid = dateArg && /^\d{4}-\d{2}-\d{2}$/.test(dateArg)
-      renderWeek(view, mondayOf(valid ? dateArg : todayStr()))
-    } else if (isVocab) {
-      renderVocabBook(view)
-    } else {
-      renderYear(view)
+      return { type: 'week', key: mondayOf(valid ? dateArg : todayStr()) }
     }
+    if (hash === 'vocab') return { type: 'vocab', key: '' }
+    return { type: 'year', key: '' }
+  }
+
+  const renderCrumbs = (route) => {
+    const crumbs = document.getElementById('crumbs')
+    crumbs.innerHTML = ''
+    const add = (text, href) => {
+      const sep = document.createElement('span')
+      sep.className = 'crumb-sep'
+      sep.textContent = '›'
+      crumbs.append(sep)
+      if (href) {
+        const a = document.createElement('a')
+        a.href = href
+        a.textContent = text
+        crumbs.append(a)
+      } else {
+        const s = document.createElement('b')
+        s.textContent = text
+        crumbs.append(s)
+      }
+    }
+    if (route.type === 'month') add(`${Number(route.key.split('-')[1])}月`)
+    if (route.type === 'week') {
+      const ym = route.key.slice(0, 7)
+      if (monthList.includes(ym)) {
+        add(`${Number(ym.split('-')[1])}月`, `#/${ym}`)
+        const idx = mondaysOfMonth(ym).indexOf(route.key)
+        add(idx >= 0 ? `第${idx + 1}週` : '週')
+      } else {
+        add('週')
+      }
+    }
+    if (route.type === 'vocab') add('單字本')
+  }
+
+  let lastRoute = null
+
+  const render = () => {
+    const view = document.getElementById('view')
+    const route = parseRoute()
+
+    let anim = 'page-fade'
+    if (lastRoute && lastRoute.type === route.type && lastRoute.key !== route.key) {
+      anim = route.key > lastRoute.key ? 'page-flip-fwd' : 'page-flip-back'
+    }
+    view.classList.remove('page-fade', 'page-flip-fwd', 'page-flip-back')
+    void view.offsetWidth
+    view.classList.add(anim)
+    lastRoute = route
+
+    view.innerHTML = ''
+    renderCrumbs(route)
+    if (route.type === 'month') renderMonth(view, route.key)
+    else if (route.type === 'week') renderWeek(view, route.key)
+    else if (route.type === 'vocab') renderVocabBook(view)
+    else renderYear(view)
+  }
+
+  /* ---- 翻頁:鍵盤與手勢 ---- */
+  const flip = (dir) => {
+    const route = parseRoute()
+    if (route.type === 'month') {
+      const idx = monthList.indexOf(route.key) + dir
+      if (idx >= 0 && idx < monthList.length) location.hash = `#/${monthList[idx]}`
+    } else if (route.type === 'week') {
+      location.hash = `#/week/${shiftDate(route.key, dir * 7)}`
+    }
+  }
+
+  const initFlip = () => {
+    document.addEventListener('keydown', (e) => {
+      if (e.target.matches('input, textarea, select')) return
+      if (!document.getElementById('dayModal').hidden) return
+      if (!document.getElementById('settingsModal').hidden) return
+      if (e.key === 'ArrowLeft') flip(-1)
+      if (e.key === 'ArrowRight') flip(1)
+    })
+
+    let touchX = null
+    let touchY = null
+    const viewEl = document.getElementById('view')
+    viewEl.addEventListener('touchstart', (e) => {
+      touchX = e.touches[0].clientX
+      touchY = e.touches[0].clientY
+    }, { passive: true })
+    viewEl.addEventListener('touchend', (e) => {
+      if (touchX === null) return
+      const dx = e.changedTouches[0].clientX - touchX
+      const dy = e.changedTouches[0].clientY - touchY
+      touchX = null
+      if (Math.abs(dx) > 70 && Math.abs(dy) < 50) flip(dx < 0 ? 1 : -1)
+    }, { passive: true })
   }
 
   const onDataReady = () => {
@@ -1597,6 +1781,7 @@
   const boot = async () => {
     initLock()
     initSettings()
+    initFlip()
     document.getElementById('dayModal').addEventListener('click', (e) => {
       if (e.target.id === 'dayModal') closeDayModal()
     })
