@@ -992,12 +992,12 @@ button, input, textarea { font-family: inherit; }
 .day-cell.is-today .day-num { color: var(--today); font-weight: 900; }
 .day-cell.is-selected { border-color: var(--accent); background: var(--accent-soft); }
 .day-num {
-  font-size: .78rem;
-  font-weight: 700;
+  font-size: .95rem;
+  font-weight: 800;
   cursor: pointer;
   border-radius: 6px;
-  padding: 0 .3em;
-  margin-left: -.3em;
+  padding: .05em .35em;
+  margin-left: -.35em;
 }
 .day-num:hover { background: var(--accent-soft); color: var(--accent); }
 .day-dot {
