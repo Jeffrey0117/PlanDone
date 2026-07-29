@@ -303,19 +303,8 @@ button, input, textarea { font-family: inherit; }
   font-weight: 700;
 }
 
-/* ====== 版面:書頁 ====== */
-.view {
-  max-width: 1080px;
-  margin: 1rem auto 2rem;
-  padding: 1.6rem 1.8rem 2rem;
-  background: #fffdf8;
-  border: 1px solid var(--paper-line);
-  border-radius: 14px;
-  box-shadow:
-    3px 3px 0 #f1ece0,
-    5px 5px 0 #eae4d4,
-    8px 10px 24px rgba(60, 50, 35, .08);
-}
+/* ====== 版面 ====== */
+.view { max-width: 1080px; margin: 0 auto; padding: 1.2rem; }
 
 @keyframes page-fade-kf {
   from { opacity: 0; }
@@ -1220,13 +1209,6 @@ button, input, textarea { font-family: inherit; }
   /* iOS 點輸入框自動縮放的元凶是 <16px 字級 */
   input, textarea { font-size: 16px !important; }
 
-  /* 書頁 */
-  .view {
-    margin: .5rem .45rem 1.2rem;
-    padding: 1rem .8rem 1.4rem;
-    border-radius: 10px;
-    box-shadow: 2px 2px 0 #f1ece0, 4px 4px 0 #eae4d4;
-  }
   .crumbs { font-size: .78rem; }
 
   /* 頂欄瘦身 */
