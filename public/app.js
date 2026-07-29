@@ -816,6 +816,11 @@
     const num = document.createElement('span')
     num.className = 'day-num'
     num.textContent = day
+    num.title = '開這天的整頁'
+    num.addEventListener('click', (e) => {
+      e.stopPropagation()
+      location.hash = `#/day/${date}`
+    })
     top.append(num)
 
     const earned = data.stamps || []
@@ -1091,6 +1096,7 @@
     title.textContent = `${m}/${d}`
     ctxEl.append(title)
     const items = [
+      { label: '⤢ 開整頁', run: () => { location.hash = `#/day/${date}` } },
       { label: '📅 編輯行程', run: () => openDayModal(date, 'sched') },
       { label: '✎ 編輯日記', run: () => openDayModal(date, 'note') },
       { label: '🔤 單字本', run: () => { location.hash = '#/vocab' } }
