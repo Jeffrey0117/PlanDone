@@ -474,7 +474,8 @@
     nav.className = 'month-nav'
 
     const prev = document.createElement('a')
-    prev.textContent = '← 上個月'
+    prev.textContent = '‹'
+    prev.title = '上個月'
     if (idx > 0) prev.href = `#/${monthList[idx - 1]}`
     else prev.className = 'nav-hidden'
 
@@ -486,7 +487,8 @@
     title.append(sub)
 
     const next = document.createElement('a')
-    next.textContent = '下個月 →'
+    next.textContent = '›'
+    next.title = '下個月'
     if (idx < monthList.length - 1) next.href = `#/${monthList[idx + 1]}`
     else next.className = 'nav-hidden'
 
@@ -1424,7 +1426,8 @@
     const nav = document.createElement('div')
     nav.className = 'month-nav'
     const prev = document.createElement('a')
-    prev.textContent = '← 上週'
+    prev.textContent = '‹'
+    prev.title = '上週'
     prev.href = `#/week/${shiftDate(monday, -7)}`
     const title = document.createElement('h2')
     const [, sm, sd] = dates[0].split('-').map(Number)
@@ -1437,7 +1440,8 @@
     if (wkIdx >= 0) sub.classList.add(`wk-t${wkIdx % 5}`)
     title.append(sub)
     const next = document.createElement('a')
-    next.textContent = '下週 →'
+    next.textContent = '›'
+    next.title = '下週'
     next.href = `#/week/${shiftDate(monday, 7)}`
     nav.append(prev, title, next)
     view.append(nav)

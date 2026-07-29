@@ -409,7 +409,8 @@ button, input, textarea { font-family: inherit; }
 .month-nav {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  gap: 1.4rem;
   margin-bottom: 1rem;
 }
 .month-nav h2 { font-size: 1.4rem; letter-spacing: .05em; text-align: center; }
@@ -451,16 +452,15 @@ button, input, textarea { font-family: inherit; }
   box-shadow: 0 2px 8px rgba(199, 62, 58, .35);
 }
 .month-nav a {
-  color: var(--accent);
+  color: var(--ink-soft);
   text-decoration: none;
   font-weight: 700;
-  font-size: .9rem;
-  padding: .3em .8em;
-  border: 1px solid var(--paper-line);
-  border-radius: 999px;
-  background: #fff;
+  font-size: 1.5rem;
+  line-height: 1;
+  padding: .1em .35em;
+  border-radius: 8px;
 }
-.month-nav a:hover { border-color: var(--accent); }
+.month-nav a:hover { color: var(--accent); background: var(--accent-soft); }
 .month-nav .nav-hidden { visibility: hidden; }
 
 .plan-label {
