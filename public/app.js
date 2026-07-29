@@ -1733,7 +1733,32 @@
 
     fillCalGrid()
     syncFaceBtns()
-    calWrap.append(grid)
+
+    const calFlex = document.createElement('div')
+    calFlex.className = 'cal-flex'
+    const calCol = document.createElement('div')
+    calCol.className = 'cal-col'
+    calCol.append(head, grid)
+
+    const currentYm = todayStr().slice(0, 7)
+    let monthPct = 0
+    if (ym < currentYm) monthPct = 100
+    else if (ym === currentYm) monthPct = Math.round((Number(todayStr().slice(8)) / daysInMonth) * 100)
+    const vbar = document.createElement('div')
+    vbar.className = 'month-vbar'
+    vbar.title = `這個月走了 ${monthPct}%`
+    const track = document.createElement('div')
+    track.className = 'mv-track'
+    const fill = document.createElement('i')
+    fill.style.height = `${monthPct}%`
+    track.append(fill)
+    const pctLabel = document.createElement('span')
+    pctLabel.className = 'mv-label'
+    pctLabel.textContent = `${monthPct}%`
+    vbar.append(track, pctLabel)
+
+    calFlex.append(calCol, vbar)
+    calWrap.append(calFlex)
     view.append(calWrap)
 
     if (settings().stamps) {
