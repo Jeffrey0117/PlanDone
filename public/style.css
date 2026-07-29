@@ -576,9 +576,32 @@ button, input, textarea { font-family: inherit; }
   color: var(--ink-soft);
   text-decoration: none;
 }
-.week-chip b { color: var(--accent); font-weight: 800; }
-.week-chip:hover { border-color: var(--accent); color: var(--accent); }
-.week-chip.is-current { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.week-chip b { font-weight: 800; }
+
+/* 週色系:朱 / 松綠 / 縹藍 / 芥黃 / 菫紫 */
+:root {
+  --wk0: #c73e3a; --wk0-soft: #f9e9e7;
+  --wk1: #3f7d5c; --wk1-soft: #e6f0ea;
+  --wk2: #4a6fa5; --wk2-soft: #e8eef7;
+  --wk3: #b07d24; --wk3-soft: #f7efdd;
+  --wk4: #7d5ba6; --wk4-soft: #f0e9f7;
+}
+.week-chip.wk-c0 { border-color: var(--wk0); color: var(--wk0); }
+.week-chip.wk-c1 { border-color: var(--wk1); color: var(--wk1); }
+.week-chip.wk-c2 { border-color: var(--wk2); color: var(--wk2); }
+.week-chip.wk-c3 { border-color: var(--wk3); color: var(--wk3); }
+.week-chip.wk-c4 { border-color: var(--wk4); color: var(--wk4); }
+.week-chip.wk-c0.is-current, .week-chip.wk-c0:hover { background: var(--wk0-soft); }
+.week-chip.wk-c1.is-current, .week-chip.wk-c1:hover { background: var(--wk1-soft); }
+.week-chip.wk-c2.is-current, .week-chip.wk-c2:hover { background: var(--wk2-soft); }
+.week-chip.wk-c3.is-current, .week-chip.wk-c3:hover { background: var(--wk3-soft); }
+.week-chip.wk-c4.is-current, .week-chip.wk-c4:hover { background: var(--wk4-soft); }
+.week-chip.is-current { font-weight: 800; box-shadow: inset 0 0 0 1px currentColor; }
+.wk-t0 { color: var(--wk0) !important; }
+.wk-t1 { color: var(--wk1) !important; }
+.wk-t2 { color: var(--wk2) !important; }
+.wk-t3 { color: var(--wk3) !important; }
+.wk-t4 { color: var(--wk4) !important; }
 
 /* ====== 週頁:月計畫面板 ====== */
 .wm-panel {

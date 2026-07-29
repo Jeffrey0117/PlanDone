@@ -1251,7 +1251,10 @@
     const [, em, ed] = dates[6].split('-').map(Number)
     title.textContent = `${sm}/${sd} – ${em}/${ed}`
     const sub = document.createElement('small')
-    sub.textContent = monday === mondayOf(todayStr()) ? 'THIS WEEK' : 'WEEK VIEW'
+    const wkIdx = mondaysOfMonth(monday.slice(0, 7)).indexOf(monday)
+    const wkTag = wkIdx >= 0 ? `W${wkIdx + 1} ・ ` : ''
+    sub.textContent = wkTag + (monday === mondayOf(todayStr()) ? 'THIS WEEK' : 'WEEK VIEW')
+    if (wkIdx >= 0) sub.classList.add(`wk-t${wkIdx % 5}`)
     title.append(sub)
     const next = document.createElement('a')
     next.textContent = '下週 →'
@@ -1455,7 +1458,7 @@
       mondays.forEach((monday, i) => {
         const [, , d] = monday.split('-').map(Number)
         const chip = document.createElement('a')
-        chip.className = 'week-chip' + (monday === currentMonday ? ' is-current' : '')
+        chip.className = `week-chip wk-c${i % 5}` + (monday === currentMonday ? ' is-current' : '')
         chip.href = `#/week/${monday}`
         const stats = taskStats((state.weeks[monday] && state.weeks[monday].goals) || '')
         chip.textContent = `W${i + 1} ・ ${Number(ym.split('-')[1])}/${d}`
