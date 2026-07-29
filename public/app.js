@@ -132,6 +132,24 @@
 
   const schedItems = (date) => parseSched(dayData(date).sched)
 
+  /* "1500" / "930" / "15:00" / "15" / "15:00-1630" → "15:00" 或 "15:00-16:30" */
+  const normTime = (raw) => {
+    const parts = (raw || '').trim().split(/\s*[-~–]\s*/)
+    const one = (p) => {
+      if (!p) return ''
+      const m = p.match(/^(\d{1,2}):?(\d{2})?$/)
+      if (!m) return ''
+      const h = Number(m[1])
+      const mm = Number(m[2] || 0)
+      if (h > 23 || mm > 59) return ''
+      return `${pad(h)}:${pad(mm)}`
+    }
+    const start = one(parts[0])
+    if (!start) return ''
+    const end = parts[1] ? one(parts[1]) : ''
+    return end ? `${start}-${end}` : start
+  }
+
   const hasEntry = (date) => {
     const d = dayData(date)
     return Boolean((d.note && d.note.trim()) || (d.stamps && d.stamps.length) ||
@@ -820,27 +838,27 @@
         row.classList.add('is-editing')
         row.innerHTML = ''
         const sIn = document.createElement('input')
-        sIn.type = 'time'
-        sIn.value = item.start
-        const eIn = document.createElement('input')
-        eIn.type = 'time'
-        eIn.value = item.end
+        sIn.className = 'sched-time-in'
+        sIn.placeholder = '15:00'
+        sIn.value = item.start ? `${item.start}${item.end ? '-' + item.end : ''}` : ''
         const tIn = document.createElement('input')
         tIn.className = 'sched-text-in'
         tIn.value = item.text
         const commit = () => {
+          const t = normTime(sIn.value)
+          const [ns, ne] = t.split('-')
           const next = items.map((x, i) => (i === idx
-            ? { ...x, start: sIn.value, end: eIn.value, text: tIn.value }
+            ? { ...x, start: ns || '', end: ne || '', text: tIn.value }
             : x))
           save(next.filter((x) => x.text.trim() || x.start))
         }
         let blurTimer = null
-        ;[sIn, eIn, tIn].forEach((input) => {
+        ;[sIn, tIn].forEach((input) => {
           input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur() })
           input.addEventListener('blur', () => { blurTimer = setTimeout(commit, 120) })
           input.addEventListener('focus', () => clearTimeout(blurTimer))
         })
-        row.append(sIn, eIn, tIn)
+        row.append(sIn, tIn)
         tIn.focus()
       }
 
@@ -866,11 +884,10 @@
 
     const add = document.createElement('div')
     add.className = 'sched-add'
-    const aStart = document.createElement('input')
-    aStart.type = 'time'
-    const aEnd = document.createElement('input')
-    aEnd.type = 'time'
-    aEnd.title = '結束時間(可不填)'
+    const aTime = document.createElement('input')
+    aTime.className = 'sched-time-in'
+    aTime.placeholder = '15:00'
+    aTime.inputMode = 'numeric'
     const aText = document.createElement('input')
     aText.className = 'sched-text-in'
     aText.placeholder = '行程…'
@@ -878,17 +895,15 @@
     aBtn.type = 'button'
     aBtn.textContent = '＋'
     const doAdd = () => {
-      if (!aText.value.trim() && !aStart.value) return
-      const sm = aStart.value
-        ? Number(aStart.value.slice(0, 2)) * 60 + Number(aStart.value.slice(3))
-        : 1440
-      save([...items, {
-        start: aStart.value, end: aEnd.value, text: aText.value, startMin: sm, endMin: null
-      }])
+      const t = normTime(aTime.value)
+      if (!aText.value.trim()) return
+      const [ns, ne] = t.split('-')
+      save([...items, { start: ns || '', end: ne || '', text: aText.value, startMin: 0, endMin: null }])
     }
     aBtn.addEventListener('click', doAdd)
-    aText.addEventListener('keydown', (e) => { if (e.key === 'Enter') doAdd() })
-    add.append(aStart, aEnd, aText, aBtn)
+    ;[aTime, aText].forEach((el) =>
+      el.addEventListener('keydown', (e) => { if (e.key === 'Enter') doAdd() }))
+    add.append(aTime, aText, aBtn)
     container.append(add)
   }
 

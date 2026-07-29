@@ -868,13 +868,16 @@ button, input, textarea { font-family: inherit; }
   align-items: center;
   flex-wrap: wrap;
 }
-.sched-add input[type="time"], .sched-row input[type="time"] {
+.sched-time-in {
   border: 1px solid var(--paper-line);
   border-radius: 6px;
-  padding: .28rem .4rem;
-  font-size: .85rem;
+  padding: .32rem .5rem;
+  font-size: .88rem;
+  font-weight: 700;
   background: #fffdf5;
-  width: 6.2em;
+  width: 6.5em;
+  text-align: center;
+  letter-spacing: .03em;
 }
 .sched-text-in {
   flex: 1;
