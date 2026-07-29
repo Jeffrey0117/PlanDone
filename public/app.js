@@ -37,12 +37,74 @@
     return `${y} 年 ${Number(m)} 月`
   }
 
+  /* 可 flush 的 debounce:關頁前能把還沒送出的內容立刻送 */
+  const pendingDebounces = new Set()
   const debounce = (fn, ms) => {
     let timer = null
-    return (...args) => {
+    const wrapped = (...args) => {
       clearTimeout(timer)
-      timer = setTimeout(() => fn(...args), ms)
+      wrapped._pending = true
+      timer = setTimeout(() => {
+        wrapped._pending = false
+        fn(...args)
+      }, ms)
     }
+    wrapped.flush = () => {
+      if (!wrapped._pending) return
+      clearTimeout(timer)
+      wrapped._pending = false
+      fn()
+    }
+    pendingDebounces.add(wrapped)
+    return wrapped
+  }
+  const flushAllPending = () => pendingDebounces.forEach((w) => w.flush())
+  const hasPendingEdits = () => [...pendingDebounces].some((w) => w._pending)
+
+  /* ---- 儲存狀態(頂欄常駐三態) ---- */
+  let saveInflight = 0
+  let saveRetryQueue = []
+
+  const setSaveState = (mode) => {
+    const el = document.getElementById('saveState')
+    el.classList.remove('is-saving', 'is-saved', 'is-error')
+    if (!mode) {
+      el.hidden = true
+      return
+    }
+    el.hidden = false
+    if (mode === 'saving') {
+      el.classList.add('is-saving')
+      el.textContent = '儲存中…'
+    } else if (mode === 'saved') {
+      el.classList.add('is-saved')
+      el.textContent = '已儲存 ✓'
+    } else {
+      el.classList.add('is-error')
+      el.textContent = `儲存失敗(${saveRetryQueue.length})・點此重試`
+    }
+  }
+
+  const trackSave = async (job) => {
+    saveInflight += 1
+    setSaveState('saving')
+    try {
+      await job()
+      saveInflight -= 1
+      if (saveInflight === 0) setSaveState(saveRetryQueue.length > 0 ? 'error' : 'saved')
+      return true
+    } catch (error) {
+      saveInflight -= 1
+      saveRetryQueue = [...saveRetryQueue, job]
+      setSaveState('error')
+      return false
+    }
+  }
+
+  const retryFailedSaves = () => {
+    const jobs = saveRetryQueue
+    saveRetryQueue = []
+    jobs.forEach((job) => trackSave(job))
   }
 
   const settings = () => ({ ...DEFAULT_SETTINGS, ...((state.meta && state.meta.settings) || {}) })
@@ -164,6 +226,7 @@
   /* ---- API ---- */
   const api = async (path, options = {}) => {
     const res = await fetch(path, {
+      keepalive: true,
       ...options,
       headers: {
         'Content-Type': 'application/json',
@@ -193,8 +256,7 @@
       ...state,
       months: { ...state.months, [ym]: { ...(state.months[ym] || {}), ...patch } }
     }
-    await api(`/api/month/${ym}`, { method: 'PUT', body: JSON.stringify(patch) })
-    flashSaved()
+    await trackSave(() => api(`/api/month/${ym}`, { method: 'PUT', body: JSON.stringify(patch) }))
   }
 
   const saveDay = async (date, patch) => {
@@ -202,15 +264,13 @@
       ...state,
       days: { ...state.days, [date]: { ...(state.days[date] || {}), ...patch } }
     }
-    await api(`/api/day/${date}`, { method: 'PUT', body: JSON.stringify(patch) })
-    flashSaved()
+    await trackSave(() => api(`/api/day/${date}`, { method: 'PUT', body: JSON.stringify(patch) }))
     renderStreak()
   }
 
   const saveMeta = async (patch) => {
     state = { ...state, meta: { ...(state.meta || {}), ...patch } }
-    await api('/api/meta', { method: 'PUT', body: JSON.stringify(patch) })
-    flashSaved()
+    await trackSave(() => api('/api/meta', { method: 'PUT', body: JSON.stringify(patch) }))
   }
 
   /* ---- 通行碼鎖 ---- */
@@ -1070,8 +1130,8 @@
       nextDays[date] = { ...(nextDays[date] || {}), ...patch[date] }
     })
     state = { ...state, days: nextDays }
-    await api('/api/days', { method: 'PUT', body: JSON.stringify({ days: patch }) })
-    flashSaved(`已複製到 ${dates.length} 個${WEEKDAY_NAMES[weekdayOf(sourceDate.slice(0, 7), Number(sourceDate.slice(8)))]} ✓`)
+    const ok = await trackSave(() => api('/api/days', { method: 'PUT', body: JSON.stringify({ days: patch }) }))
+    if (ok) flashSaved(`已複製到 ${dates.length} 個${WEEKDAY_NAMES[weekdayOf(sourceDate.slice(0, 7), Number(sourceDate.slice(8)))]} ✓`)
     render()
   }
 
@@ -1570,8 +1630,7 @@
               ...state,
               weeks: { ...state.weeks, [monday]: { ...(state.weeks[monday] || {}), goals: nextGoals } }
             }
-            await api(`/api/week/${monday}`, { method: 'PUT', body: JSON.stringify({ goals: nextGoals }) })
-            flashSaved()
+            await trackSave(() => api(`/api/week/${monday}`, { method: 'PUT', body: JSON.stringify({ goals: nextGoals }) }))
             render()
           })
           row.append(cb, text, pull)
@@ -1601,8 +1660,7 @@
           ...state,
           weeks: { ...state.weeks, [monday]: { ...(state.weeks[monday] || {}), goals: val } }
         }
-        await api(`/api/week/${monday}`, { method: 'PUT', body: JSON.stringify({ goals: val }) })
-        flashSaved()
+        await trackSave(() => api(`/api/week/${monday}`, { method: 'PUT', body: JSON.stringify({ goals: val }) }))
         render()
       },
       placeholder: '這週要拿下的幾件事…\n用「- 事項」寫的行會變成可勾選的清單',
@@ -2187,6 +2245,20 @@
     initLock()
     initSettings()
     initFlip()
+    document.getElementById('saveState').addEventListener('click', () => {
+      if (saveRetryQueue.length > 0) retryFailedSaves()
+    })
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') flushAllPending()
+    })
+    window.addEventListener('pagehide', flushAllPending)
+    window.addEventListener('beforeunload', (e) => {
+      if (hasPendingEdits() || saveInflight > 0 || saveRetryQueue.length > 0) {
+        flushAllPending()
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    })
     document.getElementById('dayModal').addEventListener('click', (e) => {
       if (e.target.id === 'dayModal') closeDayModal()
     })

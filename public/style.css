@@ -108,6 +108,15 @@ button, input, textarea { font-family: inherit; }
   white-space: nowrap;
 }
 .chip-streak { color: var(--accent); border-color: var(--accent-soft); background: var(--accent-soft); }
+.save-state { border: 0; cursor: default; }
+.save-state.is-saving { color: var(--ink-soft); background: #f1ece0; }
+.save-state.is-saved { color: #3f7d5c; background: #e6f0ea; }
+.save-state.is-error {
+  color: #fff;
+  background: var(--accent);
+  cursor: pointer;
+  font-weight: 800;
+}
 .chip-on { color: var(--accent); border-color: var(--accent); }
 .gear {
   background: none;
