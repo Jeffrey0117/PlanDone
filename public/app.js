@@ -208,7 +208,11 @@
     const now = new Date()
     const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
     const mins = Math.floor((end - now) / 60000)
-    el.textContent = `⏳ 今天剩 ${Math.floor(mins / 60)}h ${pad(mins % 60)}m`
+    const h = Math.floor(mins / 60)
+    const m = pad(mins % 60)
+    el.textContent = window.matchMedia('(max-width: 640px)').matches
+      ? `⏳${h}h${m}`
+      : `⏳ 今天剩 ${h}h ${m}m`
   }
 
   /* ---- Streak ---- */
@@ -817,7 +821,7 @@
     box.append(close)
 
     document.getElementById('dayModal').hidden = false
-    area.focus()
+    if (!window.matchMedia('(max-width: 640px)').matches) area.focus()
   }
 
   /* ---- 單字本 ---- */

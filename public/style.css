@@ -999,4 +999,48 @@ button, input, textarea { font-family: inherit; }
   .year-grid { grid-template-columns: repeat(2, 1fr); }
   .day-cell { min-height: 52px; }
   .day-preview { display: none; }
+
+  /* iOS 點輸入框自動縮放的元凶是 <16px 字級 */
+  input, textarea { font-size: 16px !important; }
+
+  /* 頂欄瘦身 */
+  .topbar { padding: .6rem .7rem; }
+  .topbar-left { gap: .5rem; }
+  .logo { font-size: .95rem; }
+  .view-nav { gap: 0; }
+  .view-nav a { padding: .15em .45em; font-size: .78rem; }
+  .topbar-right { gap: .3rem; }
+  .chip { padding: .2em .55em; font-size: .68rem; }
+  .gear { font-size: 1.05rem; padding: .1em .1em; }
+
+  /* 週檢視 */
+  .week-row { gap: .5rem; padding: .55rem .7rem; }
+  .wr-date { min-width: 4.8em; gap: .3rem; }
+  .wr-date b { font-size: 1rem; }
+  .wr-stamps { min-width: 0; }
+
+  /* 單字本 */
+  .vb-controls { flex-wrap: wrap; }
+  .vb-search { flex-basis: 100%; }
+  .vb-hide { flex: 1; }
+  .vb-quick { flex-wrap: wrap; }
+  .vb-quick input:first-child { flex: 1 1 36%; }
+  .vb-quick input:nth-child(2) { flex: 1 1 55%; }
+  .vb-ex-toggle { flex: 1; }
+  .vb-quick > button:last-child { flex: 2; }
+  .vb-row { flex-wrap: wrap; row-gap: .1rem; }
+  .vb-row b { min-width: 0; margin-right: .2rem; }
+  .vb-edit-row { flex-direction: column; }
+
+  /* 彈窗與設定面板 */
+  .modal { padding: .6rem; align-items: flex-start; padding-top: 7vh; }
+  .modal-box { padding: 1.1rem 1.1rem; }
+  .set-toggles { grid-template-columns: 1fr; }
+
+  /* 日曆格 */
+  .day-top { overflow: hidden; }
+
+  /* 月頁頭列 */
+  .month-nav a { font-size: .78rem; padding: .25em .6em; }
+  .stamp-btn { width: 42px; height: 42px; font-size: .54rem; }
 }
