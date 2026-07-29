@@ -239,8 +239,8 @@ button, input, textarea { font-family: inherit; }
   top: -1px;
   height: 12px;
   min-width: 14px;
-  background: linear-gradient(90deg, #e8a29a, var(--accent));
-  border: 1px solid #a53531;
+  background: linear-gradient(90deg, #9ec7ae, #3f7d5c);
+  border: 1px solid #33654b;
   border-radius: 999px;
   transition: width 1s ease;
 }
@@ -264,7 +264,7 @@ button, input, textarea { font-family: inherit; }
   margin-top: .45rem;
   font-weight: 700;
 }
-.yp-caption em { font-style: normal; color: var(--accent); }
+.yp-caption em { font-style: normal; color: #3f7d5c; }
 
 /* ====== 年度一字 ====== */
 .theme-hero { text-align: center; padding: 1.6rem 0 2rem; }
@@ -660,7 +660,7 @@ button, input, textarea { font-family: inherit; }
 .card-bar i {
   display: block;
   height: 100%;
-  background: var(--accent);
+  background: #3f7d5c;
   border-radius: 3px;
 }
 
@@ -845,14 +845,14 @@ button, input, textarea { font-family: inherit; }
 .mv-track i {
   display: block;
   width: 100%;
-  background: linear-gradient(180deg, #e8a29a, var(--accent));
+  background: linear-gradient(180deg, #9ec7ae, #3f7d5c);
   border-radius: 999px;
   transition: height 1s ease;
 }
 .mv-label {
   font-size: .64rem;
   font-weight: 800;
-  color: var(--accent);
+  color: #3f7d5c;
   letter-spacing: .02em;
 }
 .cal-grid { position: relative; transform-style: preserve-3d; }
