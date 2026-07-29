@@ -824,6 +824,8 @@ button, input, textarea { font-family: inherit; }
 .cal-head, .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: .35rem; }
 .cal-wrap { perspective: 1400px; }
 .cal-flex { display: flex; gap: .55rem; align-items: stretch; }
+.year-inline { margin-top: .8rem; }
+.year-inline .yp-caption { margin-top: .35rem; }
 .cal-col { flex: 1; min-width: 0; }
 .month-vbar {
   display: flex;

@@ -237,21 +237,64 @@
   }
 
   /* ---- 年進度條 + 倒數 ---- */
-  const initProgress = () => {
+  const yearStats = () => {
     const now = new Date()
     const year = now.getFullYear()
     const firstDay = new Date(year, 0, 1)
     const totalDays = Math.round((new Date(year + 1, 0, 1) - firstDay) / 86400000)
     const dayIndex = Math.floor((now - firstDay) / 86400000) + 1
     const percent = Math.round((dayIndex / totalDays) * 1000) / 10
-    document.getElementById('ypFill').style.width = `${percent}%`
-    document.getElementById('ypStart').textContent = `JAN '${String(year).slice(2)}`
-    document.getElementById('ypEnd').textContent = `DEC '${String(year).slice(2)}`
+    return { year, totalDays, dayIndex, percent }
+  }
+
+  const BUDDY_SVG = `<svg class="yp-buddy" viewBox="0 0 28 28" aria-hidden="true">
+    <circle cx="14" cy="14" r="12" fill="#ffe8b3" stroke="#3a3630" stroke-width="1.6"/>
+    <circle cx="9.5" cy="12.5" r="1.6" fill="#3a3630"/>
+    <circle cx="18.5" cy="12.5" r="1.6" fill="#3a3630"/>
+    <path d="M10.5 17.5 Q14 20.5 17.5 17.5" stroke="#3a3630" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+    <circle cx="7" cy="16" r="1.8" fill="#f5b7ad" opacity=".8"/>
+    <circle cx="21" cy="16" r="1.8" fill="#f5b7ad" opacity=".8"/>
+  </svg>`
+
+  const initProgress = () => {
+    const s = yearStats()
+    document.getElementById('ypFill').style.width = `${s.percent}%`
+    document.getElementById('ypStart').textContent = `JAN '${String(s.year).slice(2)}`
+    document.getElementById('ypEnd').textContent = `DEC '${String(s.year).slice(2)}`
     const caption = document.getElementById('ypCaption')
     caption.innerHTML = ''
     const dayText = document.createElement('em')
-    dayText.textContent = `DAY ${dayIndex} / ${totalDays}`
-    caption.append(dayText, ` ・ ${percent}% ・ ${totalDays - dayIndex} DAYS LEFT ・ STEP BY STEP`)
+    dayText.textContent = `DAY ${s.dayIndex} / ${s.totalDays}`
+    caption.append(dayText, ` ・ ${s.percent}% ・ ${s.totalDays - s.dayIndex} DAYS LEFT ・ STEP BY STEP`)
+  }
+
+  const buildYearBarInline = () => {
+    const s = yearStats()
+    const wrap = document.createElement('div')
+    wrap.className = 'year-inline'
+    const row = document.createElement('div')
+    row.className = 'yp-row'
+    const start = document.createElement('span')
+    start.className = 'yp-edge'
+    start.textContent = `JAN '${String(s.year).slice(2)}`
+    const track = document.createElement('div')
+    track.className = 'yp-track'
+    const fill = document.createElement('div')
+    fill.className = 'yp-fill'
+    fill.style.width = `${s.percent}%`
+    fill.innerHTML = BUDDY_SVG
+    track.append(fill)
+    const end = document.createElement('span')
+    end.className = 'yp-edge'
+    end.textContent = `DEC '${String(s.year).slice(2)}`
+    row.append(start, track, end)
+    const caption = document.createElement('p')
+    caption.className = 'yp-caption'
+    const dayText = document.createElement('em')
+    dayText.textContent = `DAY ${s.dayIndex} / ${s.totalDays}`
+    caption.append(dayText, ` ・ ${s.percent}% ・ ${s.totalDays - s.dayIndex} DAYS LEFT`)
+    wrap.append(row, caption)
+    return wrap
   }
 
   const updateTodayLeft = () => {
@@ -292,7 +335,8 @@
   /* ---- 設定套用 ---- */
   const applySettings = () => {
     const s = settings()
-    document.querySelector('.year-progress').hidden = !s.yearProgress
+    const onMonthPage = monthList.includes(location.hash.replace(/^#\//, ''))
+    document.querySelector('.year-progress').hidden = !s.yearProgress || onMonthPage
     document.getElementById('todayLeft').hidden = !s.todayCountdown
     renderStreak()
   }
@@ -1759,6 +1803,7 @@
 
     calFlex.append(calCol, vbar)
     calWrap.append(calFlex)
+    if (settings().yearProgress) calWrap.append(buildYearBarInline())
     view.append(calWrap)
 
     if (settings().stamps) {
@@ -1990,6 +2035,7 @@
 
     view.innerHTML = ''
     renderCrumbs(route)
+    document.querySelector('.year-progress').hidden = !settings().yearProgress || route.type === 'month'
     if (route.type === 'month') renderMonth(view, route.key)
     else if (route.type === 'week') renderWeek(view, route.key)
     else if (route.type === 'vocab') renderVocabBook(view)
