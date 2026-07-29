@@ -1106,6 +1106,27 @@ button, input, textarea { font-family: inherit; }
   line-height: 1;
 }
 .day-preview.is-sched { color: var(--accent); font-weight: 700; }
+.sched-copy-row {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  flex-wrap: wrap;
+  margin-top: .8rem;
+  padding-top: .7rem;
+  border-top: 1px dashed var(--paper-line);
+}
+.sched-copy-row span { font-size: .76rem; color: var(--ink-soft); font-weight: 700; }
+.sched-copy-row button {
+  border: 1px solid var(--paper-line);
+  border-radius: 999px;
+  background: #fff;
+  font-size: .76rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+  padding: .2em .8em;
+  cursor: pointer;
+}
+.sched-copy-row button:hover { border-color: var(--accent); color: var(--accent); }
 .day-modal-box .day-stamp-row { margin: .7rem 0; }
 .day-stamp-btn.is-due { border-style: dashed; border-color: var(--accent); color: var(--accent); }
 .day-modal-area {

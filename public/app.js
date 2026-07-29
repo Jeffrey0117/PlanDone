@@ -180,11 +180,12 @@
     return res.json()
   }
 
-  const flashSaved = () => {
+  const flashSaved = (msg = '已儲存 ✓') => {
     const bar = document.getElementById('saveBar')
+    bar.textContent = msg
     bar.hidden = false
     clearTimeout(flashSaved.timer)
-    flashSaved.timer = setTimeout(() => { bar.hidden = true }, 1200)
+    flashSaved.timer = setTimeout(() => { bar.hidden = true }, 1800)
   }
 
   const saveMonth = async (ym, patch) => {
@@ -942,6 +943,22 @@
       el.addEventListener('keydown', (e) => { if (e.key === 'Enter') doAdd() }))
     add.append(aTime, aText, aBtn)
     container.append(add)
+
+    if (items.length > 0) {
+      const copyRow = document.createElement('div')
+      copyRow.className = 'sched-copy-row'
+      const label = document.createElement('span')
+      label.textContent = '⧉ 把這天的行程複製到:'
+      copyRow.append(label)
+      copyOptions(date).forEach((opt) => {
+        const btn = document.createElement('button')
+        btn.type = 'button'
+        btn.textContent = opt.label
+        btn.addEventListener('click', () => doCopySched(date, opt.until))
+        copyRow.append(btn)
+      })
+      container.append(copyRow)
+    }
   }
 
   /* 日記模式 */
@@ -962,6 +979,55 @@
     if (!window.matchMedia('(max-width: 640px)').matches) area.focus()
   }
 
+  /* ---- 複製整天行程到之後同星期的日子 ---- */
+  const copyTargets = (sourceDate, until) => {
+    const [sy] = sourceDate.split('-').map(Number)
+    const end = until === 'month'
+      ? `${sourceDate.slice(0, 7)}-${pad(daysInYm(sourceDate.slice(0, 7)))}`
+      : `${sy}-12-31`
+    const targets = []
+    let d = shiftDate(sourceDate, 7)
+    while (d <= end) {
+      if (dateInRange(d)) targets.push(d)
+      d = shiftDate(d, 7)
+    }
+    return targets
+  }
+
+  const doCopySched = async (sourceDate, until) => {
+    const sourceLines = (dayData(sourceDate).sched || '')
+      .split('\n').map((l) => l.trim()).filter(Boolean)
+    if (sourceLines.length === 0) return
+    const patch = {}
+    copyTargets(sourceDate, until).forEach((date) => {
+      const existing = (dayData(date).sched || '')
+        .split('\n').map((l) => l.trim()).filter(Boolean)
+      const added = sourceLines.filter((l) => !existing.includes(l))
+      if (added.length > 0) patch[date] = { sched: [...existing, ...added].join('\n') }
+    })
+    const dates = Object.keys(patch)
+    if (dates.length === 0) {
+      flashSaved('那些日子都已經有了 ✓')
+      return
+    }
+    const nextDays = { ...state.days }
+    dates.forEach((date) => {
+      nextDays[date] = { ...(nextDays[date] || {}), ...patch[date] }
+    })
+    state = { ...state, days: nextDays }
+    await api('/api/days', { method: 'PUT', body: JSON.stringify({ days: patch }) })
+    flashSaved(`已複製到 ${dates.length} 個${WEEKDAY_NAMES[weekdayOf(sourceDate.slice(0, 7), Number(sourceDate.slice(8)))]} ✓`)
+    render()
+  }
+
+  const copyOptions = (sourceDate) => {
+    const wd = WEEKDAY_NAMES[weekdayOf(sourceDate.slice(0, 7), Number(sourceDate.slice(8)))]
+    return [
+      { label: `每${wd} ・ 到月底`, until: 'month' },
+      { label: `每${wd} ・ 到年底`, until: 'year' }
+    ]
+  }
+
   /* 右鍵選單(桌機) */
   let ctxEl = null
   const hideCtxMenu = () => { if (ctxEl) { ctxEl.remove(); ctxEl = null } }
@@ -979,6 +1045,11 @@
       { label: '✎ 編輯日記', run: () => openDayModal(date, 'note') },
       { label: '🔤 單字本', run: () => { location.hash = '#/vocab' } }
     ]
+    if (schedItems(date).length > 0) {
+      copyOptions(date).forEach((opt) => {
+        items.push({ label: `⧉ 複製行程:${opt.label}`, run: () => doCopySched(date, opt.until) })
+      })
+    }
     items.forEach((it) => {
       const btn = document.createElement('button')
       btn.type = 'button'

@@ -101,6 +101,31 @@ app.put('/api/month/:ym', (req, res) => {
   res.json({ success: true, data: saved })
 })
 
+app.put('/api/days', (req, res) => {
+  const body = req.body && req.body.days
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return res.status(400).json({ success: false, error: '格式錯誤' })
+  }
+  const entries = Object.entries(body)
+  if (entries.length === 0 || entries.length > 400) {
+    return res.status(400).json({ success: false, error: '筆數超出範圍' })
+  }
+  const patchMap = {}
+  for (const [date, patch] of entries) {
+    const d = dateSchema.safeParse(date)
+    if (!d.success || !isValidDate(d.data) || !ymInRange(d.data.slice(0, 7))) {
+      return res.status(400).json({ success: false, error: `日期錯誤: ${date}` })
+    }
+    const p = dayBodySchema.safeParse(patch)
+    if (!p.success) {
+      return res.status(400).json({ success: false, error: `內容錯誤: ${date}` })
+    }
+    patchMap[d.data] = p.data
+  }
+  const count = store.setDays(patchMap)
+  res.json({ success: true, data: { count } })
+})
+
 app.put('/api/week/:monday', (req, res) => {
   const monday = dateSchema.safeParse(req.params.monday)
   const validMonday = monday.success && isValidDate(monday.data)

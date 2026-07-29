@@ -52,6 +52,17 @@ function setDay(date, patch) {
   return next.days[date]
 }
 
+function setDays(patchMap) {
+  const data = load()
+  const days = { ...data.days }
+  Object.entries(patchMap).forEach(([date, patch]) => {
+    days[date] = { ...(days[date] || {}), ...patch }
+  })
+  const next = { ...data, days }
+  save(next)
+  return Object.keys(patchMap).length
+}
+
 function setWeek(monday, patch) {
   const data = load()
   const next = {
@@ -69,4 +80,4 @@ function setMeta(patch) {
   return next.meta
 }
 
-module.exports = { getAll, setMonth, setDay, setWeek, setMeta }
+module.exports = { getAll, setMonth, setDay, setDays, setWeek, setMeta }
