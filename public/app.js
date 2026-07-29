@@ -50,6 +50,8 @@
   const dayData = (date) => state.days[date] || {}
   const FACE_KEY = 'plandone-cal-face'
   let calFace = localStorage.getItem(FACE_KEY) || 'sched'
+  const cellFaces = new Map()
+  const faceOf = (date) => cellFaces.get(date) || calFace
   const isTouch = () => window.matchMedia('(hover: none)').matches
   const isCjkDominant = (s) => {
     const cjk = (s.match(/[一-鿿]/g) || []).length
@@ -786,7 +788,7 @@
 
     const note = (data.note || '').trim()
     const sched = schedItems(date)
-    if (calFace === 'sched') {
+    if (faceOf(date) === 'sched') {
       if (note || sched.length > 0) {
         const dot = document.createElement('span')
         dot.className = 'day-dot'
@@ -1594,12 +1596,32 @@
       noteFaceBtn.classList.toggle('is-active', calFace === 'note')
     }
 
+    const flipCell = (cell, date) => {
+      if (cell.dataset.flipping) return
+      cell.dataset.flipping = '1'
+      cellFaces.set(date, faceOf(date) === 'sched' ? 'note' : 'sched')
+      cell.style.transition = 'transform .13s ease-in'
+      cell.style.transform = 'rotateY(90deg)'
+      setTimeout(() => {
+        const fresh = buildDayCell(ym, Number(date.slice(8)))
+        fresh.style.transform = 'rotateY(-90deg)'
+        cell.replaceWith(fresh)
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            fresh.style.transition = 'transform .13s ease-out'
+            fresh.style.transform = 'rotateY(0deg)'
+          })
+        })
+      }, 130)
+    }
+
     let flipping = false
     const flipFace = () => {
       if (flipping) return
       flipping = true
       calFace = calFace === 'sched' ? 'note' : 'sched'
       localStorage.setItem(FACE_KEY, calFace)
+      cellFaces.clear()
       syncFaceBtns()
       grid.style.transition = 'transform .15s ease-in'
       grid.style.transform = 'rotateY(90deg)'
@@ -1622,11 +1644,9 @@
 
     grid.addEventListener('click', (e) => {
       const cell = e.target.closest('.day-cell')
-      if (isTouch()) {
-        if (cell && cell.dataset.date) openDayModal(cell.dataset.date)
-      } else {
-        flipFace()
-      }
+      if (!cell || !cell.dataset.date) return
+      if (isTouch()) openDayModal(cell.dataset.date)
+      else flipCell(cell, cell.dataset.date)
     })
     grid.addEventListener('contextmenu', (e) => {
       if (isTouch()) return

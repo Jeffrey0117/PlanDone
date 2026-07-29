@@ -913,7 +913,7 @@ button, input, textarea { font-family: inherit; }
   background: #fff;
   border: 1px solid var(--paper-line);
   border-radius: 8px;
-  min-height: 64px;
+  min-height: 92px;
   padding: .35rem .45rem;
   cursor: pointer;
   position: relative;
@@ -939,7 +939,7 @@ button, input, textarea { font-family: inherit; }
   color: var(--ink-soft);
   overflow: hidden;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   margin-top: .15rem;
 }
@@ -1310,7 +1310,7 @@ button, input, textarea { font-family: inherit; }
 }
 @media (max-width: 640px) {
   .year-grid { grid-template-columns: repeat(2, 1fr); }
-  .day-cell { min-height: 52px; }
+  .day-cell { min-height: 58px; }
   .day-preview { display: none; }
 
   /* iOS 點輸入框自動縮放的元凶是 <16px 字級 */
