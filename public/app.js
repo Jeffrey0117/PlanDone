@@ -15,6 +15,7 @@
   ]
 
   let state = { months: {}, days: {}, weeks: {}, meta: {} }
+  let birthday = null // 由 /api/all 帶回(env PLANDONE_BIRTHDAY,不落碼)
 
   /* ---- 工具 ---- */
   const pad = (n) => String(n).padStart(2, '0')
@@ -288,6 +289,7 @@
       try {
         const result = await api('/api/all')
         state = result.data
+        birthday = result.birthday || null
         document.getElementById('lockOverlay').hidden = true
         onDataReady()
       } catch (error) {
@@ -405,8 +407,9 @@
   /* ---- 設定套用 ---- */
   const applySettings = () => {
     const s = settings()
-    const onMonthPage = monthList.includes(location.hash.replace(/^#\//, ''))
-    document.querySelector('.year-progress').hidden = !s.yearProgress || onMonthPage
+    const hash = location.hash.replace(/^#\//, '')
+    const barHidden = monthList.includes(hash) || hash === 'weeks'
+    document.querySelector('.year-progress').hidden = !s.yearProgress || barHidden
     document.getElementById('todayLeft').hidden = !s.todayCountdown
     renderStreak()
   }
@@ -535,6 +538,92 @@
       grid.append(card)
     })
     view.append(grid)
+  }
+
+  /* ---- 人生週曆(#/weeks) ---- */
+  const LIFE_YEARS = 90
+  const WEEKS_PER_YEAR = 52
+  const LIFE_WEEKS = LIFE_YEARS * WEEKS_PER_YEAR
+  const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000
+
+  const birthTime = () => {
+    const [y, m, d] = birthday.split('-').map(Number)
+    return new Date(y, m - 1, d).getTime()
+  }
+
+  const lifeWeekIndex = () => Math.floor((Date.now() - birthTime()) / MS_PER_WEEK)
+
+  const updateWeeksChip = () => {
+    const chip = document.getElementById('weeksChip')
+    if (!birthday) {
+      chip.hidden = true
+      return
+    }
+    const pct = Math.min(100, (lifeWeekIndex() / LIFE_WEEKS) * 100)
+    chip.textContent = `⌛ ${pct.toFixed(1)}%`
+    chip.title = '人生週曆'
+    chip.hidden = false
+  }
+
+  const renderWeeksPage = (view) => {
+    const wrap = document.createElement('div')
+    wrap.className = 'weeks-page'
+
+    if (!birthday) {
+      const empty = document.createElement('p')
+      empty.className = 'weeks-empty'
+      empty.textContent = '未設定生日 — 在伺服器 env 設 PLANDONE_BIRTHDAY 後重啟即可'
+      wrap.append(empty)
+      view.append(wrap)
+      return
+    }
+
+    const nowIdx = lifeWeekIndex()
+    const age = Math.floor((Date.now() - birthTime()) / (365.2425 * 24 * 3600 * 1000))
+    const fmt = (n) => n.toLocaleString('en-US')
+
+    const head = document.createElement('div')
+    head.className = 'weeks-head'
+    const title = document.createElement('h2')
+    title.textContent = 'LIFE IN WEEKS'
+    const summary = document.createElement('p')
+    summary.className = 'weeks-summary'
+    summary.textContent =
+      `${age} 歲 · 第 ${fmt(nowIdx + 1)} 週 / ${fmt(LIFE_WEEKS)} 週 · 已走 ${((nowIdx / LIFE_WEEKS) * 100).toFixed(1)}%`
+    head.append(title, summary)
+
+    const grid = document.createElement('div')
+    grid.className = 'weeks-grid'
+    for (let year = 0; year < LIFE_YEARS; year += 1) {
+      const row = document.createElement('div')
+      row.className = 'weeks-row' + (year % 10 === 0 ? ' is-decade' : '')
+      const label = document.createElement('span')
+      label.className = 'weeks-age'
+      label.textContent = year % 10 === 0 ? String(year) : ''
+      row.append(label)
+      for (let w = 0; w < WEEKS_PER_YEAR; w += 1) {
+        const idx = year * WEEKS_PER_YEAR + w
+        const cell = document.createElement('i')
+        cell.className = 'wk' + (idx < nowIdx ? ' is-past' : idx === nowIdx ? ' is-now' : '')
+        cell.dataset.i = idx
+        row.append(cell)
+      }
+      grid.append(row)
+    }
+
+    /* hover 才惰性補 title,4,680 格不在渲染時全算 */
+    grid.addEventListener('mouseover', (e) => {
+      const cell = e.target
+      if (!cell.classList.contains('wk') || cell.title) return
+      const idx = Number(cell.dataset.i)
+      const start = new Date(birthTime() + idx * MS_PER_WEEK)
+      const end = new Date(start.getTime() + 6 * 24 * 3600 * 1000)
+      const d = (dt) => `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`
+      cell.title = `${Math.floor(idx / WEEKS_PER_YEAR)} 歲 · ${d(start)} ~ ${d(end)}`
+    })
+
+    wrap.append(head, grid)
+    view.append(wrap)
   }
 
   /* ---- 月頁:導覽 ---- */
@@ -2199,6 +2288,7 @@
   const parseRoute = () => {
     const hash = location.hash.replace(/^#\//, '')
     if (monthList.includes(hash)) return { type: 'month', key: hash }
+    if (hash === 'weeks') return { type: 'weeks', key: '' }
     if (hash === 'week' || hash.startsWith('week/')) {
       const dateArg = hash.split('/')[1]
       const valid = dateArg && /^\d{4}-\d{2}-\d{2}$/.test(dateArg)
@@ -2253,6 +2343,7 @@
     }
     if (route.type === 'vocab') add('單字本')
     if (route.type === 'agenda') add('行程總表')
+    if (route.type === 'weeks') add('人生週曆')
   }
 
   let lastRoute = null
@@ -2272,12 +2363,14 @@
 
     view.innerHTML = ''
     renderCrumbs(route)
-    document.querySelector('.year-progress').hidden = !settings().yearProgress || route.type === 'month'
+    document.querySelector('.year-progress').hidden = !settings().yearProgress ||
+      route.type === 'month' || route.type === 'weeks'
     if (route.type === 'month') renderMonth(view, route.key)
     else if (route.type === 'week') renderWeek(view, route.key)
     else if (route.type === 'day') renderDayPage(view, route.key)
     else if (route.type === 'vocab') renderVocabBook(view)
     else if (route.type === 'agenda') renderAgenda(view)
+    else if (route.type === 'weeks') renderWeeksPage(view)
     else renderYear(view)
   }
 
@@ -2322,6 +2415,7 @@
 
   const onDataReady = () => {
     applySettings()
+    updateWeeksChip()
     render()
   }
 
@@ -2358,6 +2452,7 @@
     try {
       const result = await api('/api/all')
       state = result.data
+      birthday = result.birthday || null
       onDataReady()
     } catch (error) {
       /* 401 時 api() 已顯示鎖定層 */

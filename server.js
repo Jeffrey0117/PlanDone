@@ -24,6 +24,11 @@ if (!PLAN_CODE) {
 
 const PORT = Number(process.env.PORT) || 4330
 
+// 生日走 env 不落碼(repo 是 public);缺少時前端顯示未設定,不擋啟動
+const BIRTHDAY = /^\d{4}-\d{2}-\d{2}$/.test(process.env.PLANDONE_BIRTHDAY || '')
+  ? process.env.PLANDONE_BIRTHDAY
+  : null
+
 // 規劃本涵蓋範圍:2026-07 ~ 2027-06
 const RANGE_START = '2026-07'
 const RANGE_END = '2027-06'
@@ -85,7 +90,7 @@ app.use('/api', (req, res, next) => {
 })
 
 app.get('/api/all', (req, res) => {
-  res.json({ success: true, data: store.getAll() })
+  res.json({ success: true, data: store.getAll(), birthday: BIRTHDAY })
 })
 
 app.put('/api/month/:ym', (req, res) => {

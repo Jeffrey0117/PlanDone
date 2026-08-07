@@ -1538,3 +1538,60 @@ button, input, textarea { font-family: inherit; }
   .month-nav a { font-size: .78rem; padding: .25em .6em; }
   .stamp-btn { width: 42px; height: 42px; font-size: .54rem; }
 }
+
+/* ====== 人生週曆(#/weeks) ====== */
+.weeks-page {
+  max-width: 720px;
+  margin: 1.4rem auto 3rem;
+  padding: 0 1rem;
+}
+.weeks-head { text-align: center; margin-bottom: 1.2rem; }
+.weeks-head h2 {
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  letter-spacing: .35em;
+  text-indent: .35em;
+}
+.weeks-summary {
+  color: var(--ink-soft);
+  font-size: .85rem;
+  margin-top: .25rem;
+  font-variant-numeric: tabular-nums;
+}
+.weeks-grid { display: flex; flex-direction: column; gap: 3px; }
+.weeks-row { display: flex; gap: 3px; }
+.weeks-row.is-decade:not(:first-child) { margin-top: 9px; }
+.weeks-age {
+  width: 1.6rem;
+  flex: none;
+  align-self: center;
+  text-align: right;
+  padding-right: .35rem;
+  font-size: .62rem;
+  line-height: 1;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.wk {
+  flex: 1;
+  min-width: 0;
+  aspect-ratio: 1 / 1;
+  background: #fff;
+  border: 1px solid var(--paper-line);
+  border-radius: 1px;
+}
+.wk.is-past { background: var(--ink); border-color: var(--ink); opacity: .82; }
+.wk.is-now {
+  background: var(--accent);
+  border-color: var(--accent);
+  animation: wk-pulse 1.6s ease-in-out infinite;
+}
+@keyframes wk-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(199, 62, 58, .55); }
+  50% { box-shadow: 0 0 0 4px rgba(199, 62, 58, 0); }
+}
+.weeks-empty { text-align: center; color: var(--ink-soft); margin: 3rem 0; }
+
+@media (max-width: 560px) {
+  .weeks-grid, .weeks-row { gap: 2px; }
+}

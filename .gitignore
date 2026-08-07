@@ -2,3 +2,6 @@ node_modules/
 data/
 .env
 .env.*
+.deploy-state.json
+.pkg-hash
+.pm2-ecosystem.json
