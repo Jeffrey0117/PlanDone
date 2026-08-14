@@ -1595,3 +1595,22 @@ button, input, textarea { font-family: inherit; }
 @media (max-width: 560px) {
   .weeks-grid, .weeks-row { gap: 2px; }
 }
+
+/* ====== 日記儲存鈕 ====== */
+.note-foot { display: flex; justify-content: flex-end; margin-top: .45rem; }
+.note-save {
+  padding: .32em .95em;
+  border: 1px solid var(--paper-line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink-soft);
+  font-size: .8rem;
+  cursor: default;
+}
+.note-save.is-dirty {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}

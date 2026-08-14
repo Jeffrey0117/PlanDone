@@ -265,8 +265,9 @@
       ...state,
       days: { ...state.days, [date]: { ...(state.days[date] || {}), ...patch } }
     }
-    await trackSave(() => api(`/api/day/${date}`, { method: 'PUT', body: JSON.stringify(patch) }))
+    const ok = await trackSave(() => api(`/api/day/${date}`, { method: 'PUT', body: JSON.stringify(patch) }))
     renderStreak()
+    return ok
   }
 
   const saveMeta = async (patch) => {
@@ -1175,6 +1176,30 @@
     }
   }
 
+  /* 日記帶時間的行 → 行程(單向;同開始時間已存在就跳過) */
+  const extractSchedFromNote = (date, noteText) => {
+    const validTime = (i) => {
+      if (!i.start) return false
+      const [sh, sm] = i.start.split(':').map(Number)
+      if (sh > 23 || sm > 59) return false
+      if (i.end) {
+        const [eh, em] = i.end.split(':').map(Number)
+        if (eh > 23 || em > 59) return false
+      }
+      return true
+    }
+    const existing = schedItems(date)
+    const taken = new Set(existing.map((i) => i.start).filter(Boolean))
+    const fresh = []
+    parseSched(noteText).filter(validTime).forEach((i) => {
+      if (taken.has(i.start)) return
+      taken.add(i.start)
+      fresh.push(i)
+    })
+    if (fresh.length === 0) return null
+    return { sched: serializeSched([...existing, ...fresh]), count: fresh.length }
+  }
+
   /* 日記模式 */
   const renderNoteTab = (container, date, onChanged) => {
     container.innerHTML = ''
@@ -1182,14 +1207,42 @@
     area.className = 'day-modal-area'
     area.placeholder = '這天發生了什麼、想到什麼…'
     area.value = dayData(date).note || ''
+
+    const saveBtn = document.createElement('button')
+    saveBtn.type = 'button'
+    saveBtn.className = 'note-save'
+    const setDirty = (dirty) => {
+      saveBtn.disabled = !dirty
+      saveBtn.textContent = dirty ? '儲存' : '已儲存 ✓'
+      saveBtn.classList.toggle('is-dirty', dirty)
+    }
+    setDirty(false)
+
     const commit = () => {
       const val = area.value
       const prev = dayData(date).note || ''
-      if (val !== prev) saveDay(date, { note: val }).then(onChanged)
+      if (val === prev) {
+        setDirty(false)
+        return
+      }
+      const pulled = extractSchedFromNote(date, val)
+      const patch = pulled ? { note: val, sched: pulled.sched } : { note: val }
+      saveDay(date, patch).then((ok) => {
+        /* 存失敗(進重試佇列)時按鈕保持「儲存」,別謊報已儲存 */
+        setDirty(!ok || area.value !== (dayData(date).note || ''))
+        if (pulled) flashSaved(`已帶 ${pulled.count} 筆進行程 📅`)
+        onChanged(Boolean(pulled))
+      })
     }
     area.addEventListener('input', debounce(commit, 1500))
+    area.addEventListener('input', () => setDirty(area.value !== (dayData(date).note || '')))
     area.addEventListener('blur', commit)
-    container.append(area)
+    saveBtn.addEventListener('click', commit)
+
+    const foot = document.createElement('div')
+    foot.className = 'note-foot'
+    foot.append(saveBtn)
+    container.append(area, foot)
     if (!window.matchMedia('(max-width: 640px)').matches) area.focus()
   }
 
@@ -1620,6 +1673,10 @@
     const schedBox = document.createElement('div')
     renderSchedTab(schedBox, date, () => {})
     left.append(schedLabel, schedBox)
+    /* 日記帶入行程後,並排的行程面板要重畫(否則舊快照下次存檔會蓋掉帶入的項目) */
+    const refreshSched = (pulled) => {
+      if (pulled) renderSchedTab(schedBox, date, () => {})
+    }
 
     const right = document.createElement('div')
     right.className = 'dp-col'
@@ -1630,7 +1687,7 @@
     noteEn.textContent = 'THE DAY'
     noteLabel.append(noteEn)
     const noteBox = document.createElement('div')
-    renderNoteTab(noteBox, date, () => {})
+    renderNoteTab(noteBox, date, refreshSched)
     right.append(noteLabel, noteBox)
 
     spread.append(left, right)
